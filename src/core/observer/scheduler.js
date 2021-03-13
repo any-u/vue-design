@@ -12,18 +12,32 @@ import {
   isIE
 } from '../util/index'
 
+// 最大更新次数
+// 用于检测无限更新时使用
 export const MAX_UPDATE_COUNT = 100
 
+// 观察者队列
 const queue: Array<Watcher> = []
+
+// 存储处于activated 阶段的 keep-alive 组件
 const activatedChildren: Array<Component> = []
+
+// 作为 id 唯一性对象
 let has: { [key: number]: ?true } = {}
 let circular: { [key: number]: number } = {}
+
+// 防止 nextTick 重复执行
+// flushing 保证不重复执行更新，waiting 保证不重复执行 nextTick
 let waiting = false
+
+// 是否正在执行更新
 let flushing = false
+
+// 用作队列长度
 let index = 0
 
 /**
- * Reset the scheduler's state.
+ * 重置调度器状态
  */
 function resetSchedulerState () {
   index = queue.length = activatedChildren.length = 0
@@ -66,25 +80,21 @@ if (inBrowser && !isIE) {
 }
 
 /**
- * Flush both queues and run the watchers.
+ * 更新观察者队列，并执行所有的观察者
  */
 function flushSchedulerQueue () {
   currentFlushTimestamp = getNow()
   flushing = true
   let watcher, id
 
-  // Sort queue before flush.
-  // This ensures that:
-  // 1. Components are updated from parent to child. (because parent is always
-  //    created before the child)
-  // 2. A component's user watchers are run before its render watcher (because
-  //    user watchers are created before the render watcher)
-  // 3. If a component is destroyed during a parent component's watcher run,
-  //    its watchers can be skipped.
+  // 在更新前排序队列
+  // 这样可以确保
+  // 1. 组件先更新父级，再更新子级。因为父级总是在子级之前创建
+  // 2. 用户在组件中定义的 watcher 在组件自身 render 观察者之前执行(因为用户的 watchers在组件 render 观察者之前创建)
+  // 3. 如果某组件在父组件的观察者运行期间被销毁，那它的观察者可以被跳过
   queue.sort((a, b) => a.id - b.id)
 
-  // do not cache length because more watchers might be pushed
-  // as we run existing watchers
+  // 不缓存长度，因为当运行观察者时，可能有更多的观察者被推入队列
   for (index = 0; index < queue.length; index++) {
     watcher = queue[index]
     if (watcher.before) {
@@ -93,7 +103,7 @@ function flushSchedulerQueue () {
     id = watcher.id
     has[id] = null
     watcher.run()
-    // in dev build, check and stop circular updates.
+    // 非生产环境，检查并停止循环更新
     if (process.env.NODE_ENV !== 'production' && has[id] != null) {
       circular[id] = (circular[id] || 0) + 1
       if (circular[id] > MAX_UPDATE_COUNT) {
@@ -110,18 +120,17 @@ function flushSchedulerQueue () {
     }
   }
 
-  // keep copies of post queues before resetting state
+  // 重置状态之前保留队列状态
   const activatedQueue = activatedChildren.slice()
   const updatedQueue = queue.slice()
 
   resetSchedulerState()
 
-  // call component updated and activated hooks
+  // 触发组件更新和 activated 生命周期钩子
   callActivatedHooks(activatedQueue)
   callUpdatedHooks(updatedQueue)
 
-  // devtool hook
-  /* istanbul ignore if */
+  // 浏览器 devtool 钩子函数
   if (devtools && config.devtools) {
     devtools.emit('flush')
   }
@@ -139,12 +148,10 @@ function callUpdatedHooks (queue) {
 }
 
 /**
- * Queue a kept-alive component that was activated during patch.
- * The queue will be processed after the entire tree has been patched.
+ * 在 patch 过程中，对处于 activated 阶段的 keep-alive 组件 进行排队
  */
 export function queueActivatedComponent (vm: Component) {
-  // setting _inactive to false here so that a render function can
-  // rely on checking whether it's in an inactive tree (e.g. router-view)
+  // 设置_inactive 为 false，这样render函数可以依赖于检查它是否在非活动树中(如: router-view)
   vm._inactive = false
   activatedChildren.push(vm)
 }
@@ -157,33 +164,43 @@ function callActivatedHooks (queue) {
 }
 
 /**
- * Push a watcher into the watcher queue.
- * Jobs with duplicate IDs will be skipped unless it's
- * pushed when the queue is being flushed.
+ * 将观察者(watcher)放入到观察者(watcher)队列，具有重复id的被跳过，除非它是在队列flushed时被推送
  */
 export function queueWatcher (watcher: Watcher) {
   const id = watcher.id
+
+  // 具有重复id 的跳过
   if (has[id] == null) {
     has[id] = true
+
+    // 队列没有执行
+    // 为什么队列更新的时候，还存在观察者入队情况?
+    // 计算属性(computed)，执行render函数更新时，当render存在computed时，会触发计算属性get，从而收集依赖
     if (!flushing) {
+
+      // 观察者入队列
       queue.push(watcher)
     } else {
-      // if already flushing, splice the watcher based on its id
-      // if already past its id, it will be run next immediately.
+
+      // 如果已经正在执行更新，根据它的 id 插入观察者(watcher)。
+      // 保证按id顺序插入, id的顺序代表观察者创建顺序，
       let i = queue.length - 1
       while (i > index && queue[i].id > watcher.id) {
         i--
       }
       queue.splice(i + 1, 0, watcher)
     }
-    // queue the flush
+
+    // 按顺序执行
     if (!waiting) {
       waiting = true
 
+      // 非正式环境，且同步
       if (process.env.NODE_ENV !== 'production' && !config.async) {
         flushSchedulerQueue()
         return
       }
+      // 用nextTick异步执行flushSchedulerQueue，触发观察者队列里所有观察者更新
       nextTick(flushSchedulerQueue)
     }
   }
