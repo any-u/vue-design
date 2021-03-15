@@ -32,7 +32,7 @@ export function setActiveInstance(vm: Component) {
 export function initLifecycle (vm: Component) {
   const options = vm.$options
 
-  // locate first non-abstract parent
+  // 找到第一个非静态父类
   let parent = options.parent
   if (parent && !options.abstract) {
     while (parent.$options.abstract && parent.$parent) {
@@ -41,7 +41,10 @@ export function initLifecycle (vm: Component) {
     parent.$children.push(vm)
   }
 
+  // 设置实例的$parent
   vm.$parent = parent
+
+  // 设置实例的$root属性，为根节点
   vm.$root = parent ? parent.$root : vm
 
   vm.$children = []
