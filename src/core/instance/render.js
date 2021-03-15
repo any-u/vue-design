@@ -17,27 +17,37 @@ import VNode, { createEmptyVNode } from '../vdom/vnode'
 import { isUpdatingChildComponent } from './lifecycle'
 
 export function initRender (vm: Component) {
-  vm._vnode = null // the root of the child tree
-  vm._staticTrees = null // v-once cached trees
+
+  // 初始化组件的_vnode属性
+  vm._vnode = null // 子树的根
+  vm._staticTrees = null // v-once 缓存树
+
+  // 初始化获取vm.$options
   const options = vm.$options
-  const parentVnode = vm.$vnode = options._parentVnode // the placeholder node in parent tree
+
+  // 初始化获取父级vnode
+  const parentVnode = vm.$vnode = options._parentVnode 
+
+  // 获取渲染context
   const renderContext = parentVnode && parentVnode.context
+  
+  // 解析slot属性并赋给$slots
   vm.$slots = resolveSlots(options._renderChildren, renderContext)
+
+  // 默认设置$scopedSlots为冻结的空对象(Object.freeze({}))
   vm.$scopedSlots = emptyObject
-  // bind the createElement fn to this instance
-  // so that we get proper render context inside it.
-  // args order: tag, data, children, normalizationType, alwaysNormalize
-  // internal version is used by render functions compiled from templates
+
+  // 把createElement函数绑定到vm._c上
+  // 参数顺序: tag, data, children, normalizationType, alwaysNormalize
   vm._c = (a, b, c, d) => createElement(vm, a, b, c, d, false)
-  // normalization is always applied for the public version, used in
-  // user-written render functions.
+  
+  // 规范化的版本应用于用户编写的渲染函数，即alwaysNormalize设为true
   vm.$createElement = (a, b, c, d) => createElement(vm, a, b, c, d, true)
 
-  // $attrs & $listeners are exposed for easier HOC creation.
-  // they need to be reactive so that HOCs using them are always updated
   const parentData = parentVnode && parentVnode.data
 
-  /* istanbul ignore else */
+  // 把$attrs、$listeners定义为响应式数据，
+  // 非生产环境新增setter警告，不允许直接修改$attrs、$listeners属性
   if (process.env.NODE_ENV !== 'production') {
     defineReactive(vm, '$attrs', parentData && parentData.attrs || emptyObject, () => {
       !isUpdatingChildComponent && warn(`$attrs is readonly.`, vm)
