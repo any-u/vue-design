@@ -10,9 +10,15 @@ import {
 import { updateListeners } from '../vdom/helpers/index'
 
 export function initEvents (vm: Component) {
+  
+  // 通过Object.create(null) 方案设置vm._events属性
   vm._events = Object.create(null)
+
+  // 初始化_hasHookEvent设为false
   vm._hasHookEvent = false
-  // init parent attached events
+
+  // 初始化父级附加事件
+  // |> 把父级监听的事件绑定到vm._events上
   const listeners = vm.$options._parentListeners
   if (listeners) {
     updateComponentListeners(vm, listeners)
@@ -44,6 +50,11 @@ export function updateComponentListeners (
   listeners: Object,
   oldListeners: ?Object
 ) {
+  // 把target设为vm实例
+  // |> target作用在于同一时间只处理同一个组件，防止事件绑定出错
+  // |> 开始target=vm，把当前target设为vm
+  // |> 接着更新事件监听器
+  // |> target设为undefined，恢复事件绑定
   target = vm
   updateListeners(listeners, oldListeners || {}, add, remove, createOnceHandler, vm)
   target = undefined
