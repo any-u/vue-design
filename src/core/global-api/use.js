@@ -5,7 +5,7 @@ import { toArray } from '../util/index'
 export function initUse (Vue: GlobalAPI) {
   Vue.use = function (plugin: Function | Object) {
 
-    // Vue构造函数静态属性(不会继承)_installedPlugins初始化
+    // Vue构造函数静态属性(不会直接继承)_installedPlugins初始化
     const installedPlugins = (this._installedPlugins || (this._installedPlugins = []))
     if (installedPlugins.indexOf(plugin) > -1) {
       return this
