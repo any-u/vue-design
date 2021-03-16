@@ -108,8 +108,23 @@ export function parse(
   delimiters = options.delimiters;
 
   const stack = [];
+
+  // 保留模版中标签之间的空格 ~~> 设为false，则模版中HTML标签之间的空格将会被忽略
   const preserveWhitespace = options.preserveWhitespace !== false;
+
+  // 空白处理策略 值为'preserve' | 'condense'
+  // |> preserve: 默认模式
+  // |> condense: 
+  /**
+   *  <p>
+   *    Welcome to <b>Vue.js</b> <i>world</i>.
+   *    Have fun!
+   *  </p>
+   * ===>
+   * <p> Welcome to <b>Vue.js</b> <i>world</i>. Have fun! </p>
+   */
   const whitespaceOption = options.whitespace;
+
   let root;
   let currentParent;
   let inVPre = false;
@@ -217,14 +232,40 @@ export function parse(
   }
 
   parseHTML(template, {
+
+    // ⚠️打印函数
     warn,
+
+    // 是否期望和浏览器器保证一致
+    // |>web平台设为true
     expectHTML: options.expectHTML,
+
+    // 校检标签是否是一元标签
+    // |> <img />
     isUnaryTag: options.isUnaryTag,
+
+    // 校检是否是左开放标签, 
+    // |> 如<li> ，浏览器会自动补齐<li></li>
+    // |> div必须这么写：<div></div>
     canBeLeftOpenTag: options.canBeLeftOpenTag,
+
+    // 检测是否需要编码换行符(兼容处理)
+    // |> IE会在属性值内编码换行符，而其他浏览器不会
     shouldDecodeNewlines: options.shouldDecodeNewlines,
+
+    // 检测是否需要编码a[href]中的内容
+    // Chrome会对a[href]的内容镜像编码    
     shouldDecodeNewlinesForHref: options.shouldDecodeNewlinesForHref,
+
+    // 注释
+    // true时会保留渲染模板中的HTML注释
     shouldKeepComment: options.comments,
+    
+    // 是否需要启动某个功能
+    // |> 开发时非生产环境出错时，标记出错的具体源代码位置 
     outputSourceRange: options.outputSourceRange,
+
+    // 处理开始标签
     start(tag, attrs, unary, start, end) {
       // check namespace.
       // inherit parent ns if there is one
@@ -315,6 +356,7 @@ export function parse(
       }
     },
 
+    // 处理结束标签
     end(tag, start, end) {
       const element = stack[stack.length - 1];
       // pop stack
@@ -326,6 +368,7 @@ export function parse(
       closeElement(element);
     },
 
+    // 处理文本
     chars(text: string, start: number, end: number) {
       if (!currentParent) {
         if (process.env.NODE_ENV !== "production") {
@@ -404,6 +447,8 @@ export function parse(
         }
       }
     },
+
+    // 处理注释节点
     comment(text: string, start, end) {
       // adding anything as a sibling to the root node is forbidden
       // comments should still be allowed, but ignored
