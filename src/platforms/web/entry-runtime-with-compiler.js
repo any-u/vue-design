@@ -18,6 +18,14 @@ const idToTemplate = cached(id => {
 
 // 缓存Vue.prototype.$mount
 const mount = Vue.prototype.$mount
+
+// 为什么这里要重写$mount
+// |> 拆分成多个版本
+// |> render作为编译的核心
+// |> 此处既调用了基本的$mount，又传入了render， 那当前的版本就作为带编译的运行版本, 即entry-runtime-with-compiler
+// |> 如果只导出基本的$mount，那即作为不带编译的运行版本, 即entry-runtime
+// |> 只导出编译相关API，即entry-compiler
+// |> entry-server-basic-renderer 与 entry-server-render属于SSR相关。
 Vue.prototype.$mount = function (
   el?: string | Element,
   hydrating?: boolean
