@@ -147,8 +147,15 @@ export function mountComponent (
   hydrating?: boolean
 ): Component {
   vm.$el = el
+  
+  // $mount阶段处理template和el，将其转成render函数
+  // |> 如果template和el都不存在，这里render也就不存在
   if (!vm.$options.render) {
+
+    // render不存在，则绑定一个创建空vnode的函数
     vm.$options.render = createEmptyVNode
+
+    // 非生产环境打印⚠️信息
     if (process.env.NODE_ENV !== 'production') {
       /* istanbul ignore if */
       if ((vm.$options.template && vm.$options.template.charAt(0) !== '#') ||
@@ -167,10 +174,15 @@ export function mountComponent (
       }
     }
   }
+
+  // 调用beforeMount生命周期
   callHook(vm, 'beforeMount')
 
+  // 定义一个updateComponent变量，绑定更新组件函数
+  // 不同环境绑定不同的更新组件函数
   let updateComponent
-  /* istanbul ignore if */
+
+  // 非生产环境,给render函数和update函数分别增加性能检测过程
   if (process.env.NODE_ENV !== 'production' && config.performance && mark) {
     updateComponent = () => {
       const name = vm._name
@@ -189,25 +201,31 @@ export function mountComponent (
       measure(`vue ${name} patch`, startTag, endTag)
     }
   } else {
+
+  // vm._render()
+  // |> 将render函数转成vnode节点
+  // vm._update()
+  // |> 将vnode节点转成真实节点
     updateComponent = () => {
       vm._update(vm._render(), hydrating)
     }
   }
 
-  // we set this to vm._watcher inside the watcher's constructor
-  // since the watcher's initial patch may call $forceUpdate (e.g. inside child
-  // component's mounted hook), which relies on vm._watcher being already defined
+  // 通过watcher绑定组件更新机制
+  // |> 当组件更新时，触发updateComponent
   new Watcher(vm, updateComponent, noop, {
     before () {
       if (vm._isMounted && !vm._isDestroyed) {
         callHook(vm, 'beforeUpdate')
       }
     }
+  // isRenderWatcher设为true
+  // |> 把它绑定到vm._watcher上，当调用$forceUpdate时，即可触发vm._watcher.update直接触发组件更新
   }, true /* isRenderWatcher */)
   hydrating = false
 
-  // manually mounted instance, call mounted on self
-  // mounted is called for render-created child components in its inserted hook
+  // 手动调用mounted生命周期，其子组件在渲染阶段调用生命周期
+  // |> 造成了更新顺序 父beforeMount->子beforeMount->子mounted->父mounted (省略其他生命周期)
   if (vm.$vnode == null) {
     vm._isMounted = true
     callHook(vm, 'mounted')
