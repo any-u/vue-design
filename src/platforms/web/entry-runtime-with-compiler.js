@@ -95,10 +95,25 @@ Vue.prototype.$mount = function (
       // |> 3. generate：生成render和staticRenderFns
       // |> 不是指compileToFunctions实现了编译，它内部还会调用createCompiler创建编译函数等等
       const { render, staticRenderFns } = compileToFunctions(template, {
+
+        // 是否需要启动某个功能
+        // |> 开发时非生产环境出错时，标记出错的具体源代码位置
         outputSourceRange: process.env.NODE_ENV !== 'production',
+
+        // 检测是否需要编码换行符(兼容处理)
+        // |> IE会在属性值内编码换行符，而其他浏览器不会
         shouldDecodeNewlines,
+
+        // 检测是否需要编码a[href]中的内容
+        // Chrome会对a[href]的内容镜像编码
         shouldDecodeNewlinesForHref,
+
+        // 分隔符
+        // 通常模式下是["{{", "}}"]
         delimiters: options.delimiters,
+
+        // 注释
+        // true时会保留渲染模板中的HTML注释
         comments: options.comments
       }, this)
       options.render = render
