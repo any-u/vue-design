@@ -265,19 +265,27 @@ export function parse(
     // |> 开发时非生产环境出错时，标记出错的具体源代码位置 
     outputSourceRange: options.outputSourceRange,
 
-    // 处理开始标签
+    /**
+     * 处理开始标签
+     * |> 1. 处理命名空间 -> 修复ie svg bug
+     * |> 2. 创建基本AST抽象语法树
+     * |> 3. 执行预转换 -> 处理input v-model属性
+     * |> 4. 针对对应属性，调用不同属性处理函数
+     * |> 5. 非自闭合标签修改 [标签执行栈] 和当前父节点，自闭合标签则关闭节点
+     */
     start(tag, attrs, unary, start, end) {
-      // check namespace.
-      // inherit parent ns if there is one
+
+      // 检查命名空间，如果父级存在，则继承父级命名空间，
       const ns =
         (currentParent && currentParent.ns) || platformGetTagNamespace(tag);
 
-      // handle IE svg bug
-      /* istanbul ignore if */
+      // 处理IE SVG  bug
+      // |> 命名空间设置的意义
       if (isIE && ns === "svg") {
         attrs = guardIESVGBug(attrs);
       }
 
+      // 创建基础AST抽象语法树
       let element: ASTElement = createASTElement(tag, attrs, currentParent);
       if (ns) {
         element.ns = ns;
@@ -285,13 +293,18 @@ export function parse(
 
       if (process.env.NODE_ENV !== "production") {
         if (options.outputSourceRange) {
+          // 非生产模式，且outputSourceRange设为true
+          // 标记元素的start开始索引
           element.start = start;
+          // 标记元素的end结束索引
           element.end = end;
+          // 设置元素的原始属性集合
           element.rawAttrsMap = element.attrsList.reduce((cumulated, attr) => {
             cumulated[attr.name] = attr;
             return cumulated;
           }, {});
         }
+        // 检验属性名称，如非法则打印⚠️信息
         attrs.forEach((attr) => {
           if (invalidAttributeRE.test(attr.name)) {
             warn(
@@ -306,6 +319,10 @@ export function parse(
         });
       }
 
+      // 校检元素是否是被禁止的标签、且非SSR环境
+      // |> 如style标签，
+      // |> 或script标签、且属性集合中type不存在，或type为"text/javascript")
+      // --> 设置元素forbidden 为true, 且打印⚠️信息
       if (isForbiddenTag(element) && !isServerRendering()) {
         element.forbidden = true;
         process.env.NODE_ENV !== "production" &&
@@ -318,29 +335,49 @@ export function parse(
           );
       }
 
-      // apply pre-transforms
+      // 执行预转换逻辑
+      // |> 目前预转换逻辑只存在对input的处理 --> 对v-model属性进行转换
+      // |> 后续可在此拓展
       for (let i = 0; i < preTransforms.length; i++) {
         element = preTransforms[i](element, options) || element;
       }
 
+      // 校检是否处于v-pre状态
+      // 全局属性，判断当前是否处于v-pre属性的环境下
       if (!inVPre) {
+
+        // 尝试解析v-pre属性
+        // 如果存在v-pre属性，则设置element.pre为true
         processPre(element);
+
+        // 如果element.pre为true，则设置inVPre为true
+        // 当前设置为v-pre环境
         if (element.pre) {
           inVPre = true;
         }
       }
+
+      // 判断当前元素标签名是否是pre
       if (platformIsPreTag(element.tag)) {
         inPre = true;
       }
+
       if (inVPre) {
+
+        // 如果是v-pre状态，处理原始属性
         processRawAttrs(element);
       } else if (!element.processed) {
-        // structural directives
+
+        // processed 表示元素是否被解析过
+        // |> preTransform设为true
+        // |>处理结构指令for、if和once
         processFor(element);
         processIf(element);
         processOnce(element);
       }
 
+      // 如果根节点不存在，则把当前元素设为根节点
+      // 非生产环境则校检root节点，如slot、template不能作为root节点
       if (!root) {
         root = element;
         if (process.env.NODE_ENV !== "production") {
@@ -349,14 +386,25 @@ export function parse(
       }
 
       if (!unary) {
+
+        // 非闭合标签
+        // 如<div>foo</div>，处理完<div>开始标签
+        // 设置当前父元素为div，接着处理div内部逻辑,相对于foo，div就是foo文本的父级
         currentParent = element;
         stack.push(element);
       } else {
+
+        // 自闭合标签
+        // 调用closeElement关闭元素
         closeElement(element);
       }
     },
 
-    // 处理结束标签
+    /**
+     * 处理结束标签
+     * |> 1. 删除 [标签执行栈]，调整当前父节点
+     * |> 2. 关闭节点
+     */
     end(tag, start, end) {
       const element = stack[stack.length - 1];
       // pop stack
@@ -368,8 +416,22 @@ export function parse(
       closeElement(element);
     },
 
-    // 处理文本
+    /**
+     * 处理纯文本
+     * |> 1. 父节点元素校检是否存在
+     * |> 2. IE textarea标签placeholder bug 修复
+     * |> 3. 解析text，
+     * |> 4. 新增AST节点，添加到父节点的children里
+     * |> AST节点类型:
+     *        type = 1: 普通节点类型 
+     *        type = 2: 字面量表达式文本节点
+     *        type = 3: 纯文本节点
+     */
     chars(text: string, start: number, end: number) {
+      // 校检父节点元素是否存在
+      // |> 打印⚠️信息，
+      // |> 如<div>foo</div>，这里的currentParent即为div
+      // |> 文本不允许放在无父节点处，起码都存在个根节点
       if (!currentParent) {
         if (process.env.NODE_ENV !== "production") {
           if (text === template) {
@@ -385,8 +447,9 @@ export function parse(
         }
         return;
       }
-      // IE textarea placeholder bug
-      /* istanbul ignore if */
+
+      // IE textarea标签placeholder bug 修复
+      // |> 兼容处理
       if (
         isIE &&
         currentParent.tag === "textarea" &&
@@ -394,31 +457,62 @@ export function parse(
       ) {
         return;
       }
+
+      // 缓存当前父元素的children值
       const children = currentParent.children;
+      
+        // 是否在pre标签下或text移除前后空格后依然存在
       if (inPre || text.trim()) {
+
+        // 元素标签是否是script或style
+        // |> 是则不处理
+        // |> 不是则调用he.decode解码下文本, 如&ne; -> ≠
         text = isTextTag(currentParent) ? text : decodeHTMLCached(text);
       } else if (!children.length) {
-        // remove the whitespace-only node right after an opening tag
+
+        // 删除空字符串，如"    "
         text = "";
+        
+      // 判断是否配置了whitespaceOption 
       } else if (whitespaceOption) {
+        
         if (whitespaceOption === "condense") {
-          // in condense mode, remove the whitespace node if it contains
-          // line break, otherwise condense to a single space
+
+          // condense模式，如果空格节点包含换行符(/r 或/n)，则删除，否则用单个空格
           text = lineBreakRE.test(text) ? "" : " ";
         } else {
+
+          // preserve模式使用单个空格
           text = " ";
         }
       } else {
+        
+        // 如果preserveWhitespace设为true，则使用单个空格，false则删除空格
         text = preserveWhitespace ? " " : "";
       }
+
+      // 如果text存在
       if (text) {
         if (!inPre && whitespaceOption === "condense") {
-          // condense consecutive whitespaces into single space
+
+          // 当前标签不是pre 且为condense模式
+          // 则将多个连续空格改成单个空格
           text = text.replace(whitespaceRE, " ");
         }
         let res;
         let child: ?ASTNode;
-        if (!inVPre && text !== " " && (res = parseText(text, delimiters))) {
+        if (
+
+          // 当前标签未使用v-pre，
+          !inVPre 
+          
+          // 且文本不是空字符串
+          && text !== " " 
+
+          // parseText(text,delimiters)存在
+          // |> 结果赋给res
+          && (res = parseText(text, delimiters))) {
+          // |> type = 2 包含字面量表达式的文本节点，如{{foo}}
           child = {
             type: 2,
             expression: res.expression,
@@ -426,8 +520,15 @@ export function parse(
             text,
           };
         } else if (
+
+          // text不为空字符串
           text !== " " ||
+
+          // 或子节点还不存在，
+          // |> 即当前文本内容是父节点的第一个子节点
           !children.length ||
+
+          // 文本内容是空格，且文本节点的父节点有子节点，但最后一个节点不是空格
           children[children.length - 1].text !== " "
         ) {
           child = {
@@ -435,7 +536,11 @@ export function parse(
             text,
           };
         }
+
+        // 如果子节点存在, children添加子节点
         if (child) {
+          // 非生产模式，且outputSourceRange设为true
+          // 保留开始索引(start) 和 结束索引(end)
           if (
             process.env.NODE_ENV !== "production" &&
             options.outputSourceRange
@@ -448,10 +553,13 @@ export function parse(
       }
     },
 
-    // 处理注释节点
+    /**
+     * 处理注释节点
+     * |> 1. 当前父节点的children添加ASTText子节点，类型为3
+     * |> 2. 非生产环境且outputSourceRange为true，保存start开始索引和end结束索引
+     */
     comment(text: string, start, end) {
-      // adding anything as a sibling to the root node is forbidden
-      // comments should still be allowed, but ignored
+      // 不允许将任何内容作为根节点的同级节点
       if (currentParent) {
         const child: ASTText = {
           type: 3,
