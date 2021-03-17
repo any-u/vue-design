@@ -580,6 +580,10 @@ export function parse(
   return root;
 }
 
+/**
+ * 处理v-pre
+ * |> 如果属性里存在v-pre，则将el.pre设为true
+ */
 function processPre(el) {
   // 如果el属性里有v-pre
   // |> 把el的pre属性设为true
@@ -588,23 +592,45 @@ function processPre(el) {
   }
 }
 
+/**
+ * v-pre环境下，解析原始属性
+ * |> 1. 属性存在时赋值attrs
+ * |> 2. 将不含属性的子节点的plain也设为true
+ * |> plain设为true --> 该节点所对应的虚拟节点将不包含任何 VNodeData。
+ */
 function processRawAttrs(el) {
   const list = el.attrsList;
   const len = list.length;
+
+  // attrsList 属性存在
   if (len) {
+
+    // 新建attrs数组，并将其赋给el.attrs
     const attrs: Array<ASTAttr> = (el.attrs = new Array(len));
     for (let i = 0; i < len; i++) {
+
+      // 遍历属性列表赋值
       attrs[i] = {
         name: list[i].name,
+
+        // JSON.stringify作用
+        // |> 确保值在解析完成后依旧为字符串
         value: JSON.stringify(list[i].value),
       };
+
+      // 标识start开始索引、end结束索引
+      // 标记作用 --> 用于出错时，可以随时查找到源代码位置(outputSourceRange设为true时)
       if (list[i].start != null) {
         attrs[i].start = list[i].start;
         attrs[i].end = list[i].end;
       }
     }
   } else if (!el.pre) {
-    // non root node in pre blocks with no attributes
+
+    // |> 此函数被执行时，那肯定是v-pre条件
+    // |> 且el.pre不存在，则代表<p v-pre><span></span></p>中的span
+    // |> 处于v-pre环境下，且span的pre不存在
+    // plain设为true --> 该节点所对应的虚拟节点将不包含任何 VNodeData。
     el.plain = true;
   }
 }
