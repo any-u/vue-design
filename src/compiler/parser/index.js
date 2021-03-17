@@ -581,6 +581,8 @@ export function parse(
 }
 
 function processPre(el) {
+  // 如果el属性里有v-pre
+  // |> 把el的pre属性设为true
   if (getAndRemoveAttr(el, "v-pre") != null) {
     el.pre = true;
   }
