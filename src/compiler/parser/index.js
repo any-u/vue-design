@@ -705,9 +705,17 @@ export function processFor(el: ASTElement) {
 
   // 从attrsList中取出v-for属性
   if ((exp = getAndRemoveAttr(el, "v-for"))) {
+
+    // 解析v-for的表达式属性
     const res = parseFor(exp);
+
+    // 如果res存在
+    // |> 把res的值绑定到el上
     if (res) {
       extend(el, res);
+
+      // 非正式环境，且v-for表达式非法
+      // |> 打印⚠️信息
     } else if (process.env.NODE_ENV !== "production") {
       warn(`Invalid v-for expression: ${exp}`, el.rawAttrsMap["v-for"]);
     }
