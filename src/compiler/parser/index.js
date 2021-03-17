@@ -366,11 +366,14 @@ export function parse(
 
         // 如果是v-pre状态，处理原始属性
         processRawAttrs(element);
+
+        // |> processed是在preTransformNode阶段添加
+        // |> preTransformNode -> input v-model 中会解析v-for、v-if和v-once -> 标识processed为true
+        // |> processed为true时，则不需要二次处理
+        // |> 其他情况，处理v-for、v-if和v-once
       } else if (!element.processed) {
 
-        // processed 表示元素是否被解析过
-        // |> preTransform设为true
-        // |>处理结构指令for、if和once
+        // |>处理v-for、v-if和v-once
         processFor(element);
         processIf(element);
         processOnce(element);
