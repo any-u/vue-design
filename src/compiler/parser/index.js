@@ -697,8 +697,13 @@ function processRef(el) {
   }
 }
 
+/**
+ * 处理v-for属性
+ */
 export function processFor(el: ASTElement) {
   let exp;
+
+  // 从attrsList中取出v-for属性
   if ((exp = getAndRemoveAttr(el, "v-for"))) {
     const res = parseFor(exp);
     if (res) {
@@ -716,20 +721,50 @@ type ForParseResult = {
   iterator2?: string,
 };
 
+/**
+ * 解析v-for后的表达式
+ * |> 解析三种v-for方案
+ * |> 1. item of list
+ * |> 2. (item,index) of list
+ * |> 3. (value,name,index) in object
+ */
 export function parseFor(exp: string): ?ForParseResult {
+
+  // 正则匹配for语法, 如 "item of list"
+  // |> inMatch[0] 完整匹配项 --> item of list
+  // |> inMatch[1] item
+  // |> inMatch[2] list
   const inMatch = exp.match(forAliasRE);
   if (!inMatch) return;
   const res = {};
+
+  // 把值(list)绑定到res.for上
   res.for = inMatch[2].trim();
+
+  // 如果for语法时是(item) of list，所以移除inMatch[1]的"("和")"，
+  // |> 即inMatch[1]即为"(item)"
+  // |> alias 即 item
   const alias = inMatch[1].trim().replace(stripParensRE, "");
+
+  // 三种匹配方式
+  // |> 1. item of list  --> null
+  // |> 2. (item,index) of list --> [",index", "index"]
+  // |> 3. (value,name,index) in object --> [",name,index","name","index"]
   const iteratorMatch = alias.match(forIteratorRE);
   if (iteratorMatch) {
+
+    // 把匹配项替换成空字符串，并去除首尾空格 -> 即 item
     res.alias = alias.replace(forIteratorRE, "").trim();
+
+    // 模式2时，iterator1 即为index
+    // 模式3是，iterator1 即为name, iterator2 即为index
     res.iterator1 = iteratorMatch[1].trim();
+
     if (iteratorMatch[2]) {
       res.iterator2 = iteratorMatch[2].trim();
     }
   } else {
+    // 即模式1，直接赋值alias
     res.alias = alias;
   }
   return res;
