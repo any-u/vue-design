@@ -8,7 +8,7 @@ import {
 } from 'compiler/helpers'
 
 /**
- * 
+ * 解析class属性
  */
 function transformNode (el: ASTElement, options: CompilerOptions) {
   const warn = options.warn || baseWarn
@@ -32,9 +32,14 @@ function transformNode (el: ASTElement, options: CompilerOptions) {
       )
     }
   }
+
+  // 如果存在class属性，则序列化class值，并保存到staticClass上
   if (staticClass) {
     el.staticClass = JSON.stringify(staticClass)
   }
+
+  // 查找是否绑定了class属性
+  // 通过v-bind:class 或 :class方式
   const classBinding = getBindingAttr(el, 'class', false /* getStatic */)
   if (classBinding) {
     el.classBinding = classBinding
