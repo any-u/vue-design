@@ -66,6 +66,9 @@ function prependModifierMarker (symbol: string, name: string, dynamic?: boolean)
     : symbol + name // mark the event as captured
 }
 
+/**
+ * 给el新增事件处理器
+ */
 export function addHandler (
   el: ASTElement,
   name: string,

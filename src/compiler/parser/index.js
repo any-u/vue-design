@@ -1162,9 +1162,8 @@ function processAttrs(el) {
         name = name.replace(modifierRE, "");
       }
 
-      
+       // v-bind 指令
       if (bindRE.test(name)) {
-        // v-bind 指令
 
         // 解析指令名称
         name = name.replace(bindRE, "");
@@ -1189,7 +1188,7 @@ function processAttrs(el) {
           );
         }
 
-
+        // 处理修饰符中.prop，.camel和.sync修饰符
         if (modifiers) {
 
           // 使用了.prop修饰符且非动态参数
@@ -1215,6 +1214,13 @@ function processAttrs(el) {
             syncGen = genAssignmentCode(value, `$event`);
             
             // 非动态属性
+            // |> 给el添加一个update:close(即: 更新close事件)的处理函数
+            // |> 如果hyphenate(name) !== camelize(name)
+            // |> hyphenate -> 连字符转换， 如fooBar -> foo-bar
+            // |> camelize -> 驼峰转换, 即foobar -> fooBar
+            // |> 二者相等，即name = foo,
+            // |> 否则则添加连字符和驼峰两种更新监听函数，
+            // |> 即update:foo-bar处理事件和update:fooBar处理函数
             if (!isDynamic) {
               addHandler(
                 el,
@@ -1239,7 +1245,8 @@ function processAttrs(el) {
 
             // 动态属性
             } else {
-              // handler w/ dynamic event name
+              // 直接用动态名称做更新监听事件
+              // |> 即 update:[name]
               addHandler(
                 el,
                 `"update:"+(${name})`,
@@ -1253,36 +1260,61 @@ function processAttrs(el) {
             }
           }
         }
+
         if (
+          // 使用修饰符且用了.prop修饰符
           (modifiers && modifiers.prop) ||
+
+          // 或 非组件且属性必须使用元素对象的原生的prop进行绑定
           (!el.component && platformMustUseProp(el.tag, el.attrsMap.type, name))
         ) {
+          // 添加到el.props上
           addProp(el, name, value, list[i], isDynamic);
         } else {
+          // 添加到el.attrs或dynamicAttrs(动态属性)上
           addAttr(el, name, value, list[i], isDynamic);
         }
       } else if (onRE.test(name)) {
-        // v-on
+
+        // v-on 指令
         name = name.replace(onRE, "");
+        
+        // 检查是否是动态属性
         isDynamic = dynamicArgRE.test(name);
+
+        // 动态属性[<attr>]，移除"["和"]", 直接让name = <attr>
         if (isDynamic) {
           name = name.slice(1, -1);
         }
+
+        // 给事件<name>增加事件处理器
         addHandler(el, name, value, modifiers, false, warn, list[i], isDynamic);
       } else {
-        // normal directives
+
+        // 其他指令和自定义指令
+        // |> 其他指令 -> v-text、v-html、v-show、v-cloak和v-model
         name = name.replace(dirRE, "");
-        // parse arg
+
+        // 解析属性，如自定义属性v-custom:arg
+        
+        // 正则匹配属性，argMatch = [':arg', 'arg']
         const argMatch = name.match(argRE);
         let arg = argMatch && argMatch[1];
         isDynamic = false;
         if (arg) {
+
+          // name --> 'custom'
           name = name.slice(0, -(arg.length + 1));
+
+          // 动态属性, 如v-custom:[arg]
+          // |> 移除"["和"]"
           if (dynamicArgRE.test(arg)) {
             arg = arg.slice(1, -1);
             isDynamic = true;
           }
         }
+
+        // 添加指令
         addDirective(
           el,
           name,
@@ -1293,6 +1325,11 @@ function processAttrs(el) {
           modifiers,
           list[i]
         );
+        
+        // 非生产缓存，且name是model
+        // |> 检验el父标签使用了v-for指令,其父元素的alias等于v-model的value
+        // |> 如 <div v-for="item of list"><input v-model="item" /></div>
+        // |> 打印⚠️信息
         if (process.env.NODE_ENV !== "production" && name === "model") {
           checkForAliasModel(el, value);
         }
