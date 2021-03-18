@@ -39,6 +39,12 @@ export function addRawAttr (el: ASTElement, name: string, value: any, range?: Ra
   el.attrsList.push(rangeSetItem({ name, value }, range))
 }
 
+/**
+ * 给el添加指令
+ * |> 1.给el.directives添加指令对象
+ * |> 2.给el的plain设为false
+ * |> plain = true --> 该节点所对应的虚拟节点将不包含任何 VNodeData
+ */
 export function addDirective (
   el: ASTElement,
   name: string,
@@ -166,7 +172,7 @@ export function addHandler (
   }
 
   // 将el.plain设为false
-  // |> plain --> 该节点所对应的虚拟节点将不包含任何 VNodeData
+  // |> plain = true --> 该节点所对应的虚拟节点将不包含任何 VNodeData
   el.plain = false
 }
 
