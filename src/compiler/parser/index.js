@@ -138,8 +138,16 @@ export function parse(
     }
   }
 
+
+  /**
+   * 关闭标签元素
+   * 
+   */
   function closeElement(element) {
+
+    // 删除元素的尾随空格字符串
     trimEndingWhitespace(element);
+
     if (!inVPre && !element.processed) {
       element = processElement(element, options);
     }
@@ -638,18 +646,36 @@ function processRawAttrs(el) {
   }
 }
 
+
+/**
+ * 处理元素节点
+ */
 export function processElement(element: ASTElement, options: CompilerOptions) {
   processKey(element);
 
-  // determine whether this is a plain element after
-  // removing structural attributes
+  // 确实是否是普通元素 --> 该节点对应的虚拟节点将不包含任何VNodeData
+  // |> 1. key不存在
+  // |> 2. 不存在scopedSlots属性，即不存在slot
+  // |> 3. 没有属性
   element.plain =
     !element.key && !element.scopedSlots && !element.attrsList.length;
 
+  // 处理ref属性
   processRef(element);
+
+  // 处理slot内容部分，使用插槽
+  // |> 如：<template v-slot:header></template>
   processSlotContent(element);
+
+  // 处理slot出口部分，定义插槽
+  // |> 如：<slot name="header"></slot>
   processSlotOutlet(element);
+
+  // 处理内置组件component(动态组件)
   processComponent(element);
+
+  // 执行转换逻辑
+  // |> transforms --> modules里的transformNode
   for (let i = 0; i < transforms.length; i++) {
     element = transforms[i](element, options) || element;
   }
@@ -657,16 +683,31 @@ export function processElement(element: ASTElement, options: CompilerOptions) {
   return element;
 }
 
+/**
+ * 处理key属性
+ * |> 从el获取key表达式，并把它绑定到el的key属性
+ */
 function processKey(el) {
+  // 获取el上绑定的key表达式
   const exp = getBindingAttr(el, "key");
   if (exp) {
+
+    // 非生产环境
     if (process.env.NODE_ENV !== "production") {
+
+      // tag是template，则打印⚠️信息
+      // |> template上不能使用key属性
       if (el.tag === "template") {
         warn(
           `<template> cannot be keyed. Place the key on real elements instead.`,
           getRawBindingAttr(el, "key")
         );
       }
+
+      // |> 如果使用v-for，
+      // |> 且transition-group子节点使用key属性，
+      // |> v-for的index 作为key
+      // 则打印⚠️信息
       if (el.for) {
         const iterator = el.iterator2 || el.iterator1;
         const parent = el.parent;
@@ -685,14 +726,24 @@ function processKey(el) {
         }
       }
     }
+
+    // 把key表达式绑定到el的key上
     el.key = exp;
   }
 }
 
+
+/**
+ * 处理ref属性
+ * |> 1. 把ref属性绑定到el上
+ * |> 2. 递归遍历el的父级，检查其是否使用for属性，并把结果绑定到el的refInFor属性上
+ */
 function processRef(el) {
   const ref = getBindingAttr(el, "ref");
   if (ref) {
     el.ref = ref;
+    
+    // checkInFor -> 递归遍历el的父级，检查其是否使用for属性
     el.refInFor = checkInFor(el);
   }
 }
@@ -778,18 +829,35 @@ export function parseFor(exp: string): ?ForParseResult {
   return res;
 }
 
+/**
+ * 解析v-if的表达式
+ * |> 1.把v-if的表达放到el.if上
+ * |> 2.el的ifCondition数组添加exp和block构成的对象
+ * |> 3.处理v-else和v-else-if
+ */
 function processIf(el) {
+
+  // 取出el属性上v-if的表达式
+  // |> 即 v-if="foo" --> exp = "foo"
   const exp = getAndRemoveAttr(el, "v-if");
   if (exp) {
+
+    // 把表达式绑定到el的if属性上
     el.if = exp;
+
+    // 把exp和block构成的对象添加到el的ifCondition数组里
     addIfCondition(el, {
       exp: exp,
       block: el,
     });
   } else {
+
+    // v-else不存在，则把el的else属性设为true
     if (getAndRemoveAttr(el, "v-else") != null) {
       el.else = true;
     }
+
+    // 把else-if的表达式放到el的elseif属性上
     const elseif = getAndRemoveAttr(el, "v-else-if");
     if (elseif) {
       el.elseif = elseif;
@@ -838,6 +906,10 @@ export function addIfCondition(el: ASTElement, condition: ASTIfCondition) {
   el.ifConditions.push(condition);
 }
 
+/**
+ * 解析v-once的表达式
+ * |> 1. 判断el是否存在v-once属性,存在则把el的once设为true
+ */
 function processOnce(el) {
   const once = getAndRemoveAttr(el, "v-once");
   if (once != null) {
@@ -845,13 +917,20 @@ function processOnce(el) {
   }
 }
 
-// handle content being passed to a component as slot,
-// e.g. <template slot="xxx">, <div slot-scope="xxx">
+/**
+ * 处理作为插槽slot传递到组件里的内容
+ * 如：<template slot="xxx">, <div slot-scope="xxx">
+ * |> 1. 兼容处理多版本slot API方案（递进升级）
+ * |> |> 对应的值绑定到el上
+ */
 function processSlotContent(el) {
   let slotScope;
   if (el.tag === "template") {
+    // 取出el上的scope属性
     slotScope = getAndRemoveAttr(el, "scope");
-    /* istanbul ignore if */
+    
+    // 非生产环境，且scope属性存在，则打印⚠️信息
+    // |> Vue2.5版本后舍弃了scope属性，用slot-scope替代
     if (process.env.NODE_ENV !== "production" && slotScope) {
       warn(
         `the "scope" attribute for scoped slots have been deprecated and ` +
@@ -862,9 +941,15 @@ function processSlotContent(el) {
         true
       );
     }
+
+    // 把scope属性绑定到el的slotScope上，scope属性不存在，则获取slot-scope属性
     el.slotScope = slotScope || getAndRemoveAttr(el, "slot-scope");
+
+    // el上存在slot-scope属性
   } else if ((slotScope = getAndRemoveAttr(el, "slot-scope"))) {
-    /* istanbul ignore if */
+    
+    // 元素tag名不是template，非生产环境，然后元素使用了v-for
+    // |> 打印⚠️(提示)信息
     if (process.env.NODE_ENV !== "production" && el.attrsMap["v-for"]) {
       warn(
         `Ambiguous combined usage of slot-scope and v-for on <${el.tag}> ` +
@@ -877,26 +962,41 @@ function processSlotContent(el) {
     el.slotScope = slotScope;
   }
 
-  // slot="xxx"
+  // --> slot="xxx"
+
+  // 从el上取出绑定的slot表达式
   const slotTarget = getBindingAttr(el, "slot");
   if (slotTarget) {
+    
+    // 如果slotTarget = '""' -> el.slotTarget = '"default"' // '""' -> 保证解析后还是字符串
+    // 否则 -> el.slotTarget = slotTarget
     el.slotTarget = slotTarget === '""' ? '"default"' : slotTarget;
+
+    // 如果slot属性是动态被绑定的，则代表是动态slot，即el的slotTargetDynamic设为true
     el.slotTargetDynamic = !!(
       el.attrsMap[":slot"] || el.attrsMap["v-bind:slot"]
     );
-    // preserve slot as an attribute for native shadow DOM compat
-    // only for non-scoped slots.
+    
+    // 如果tag不是template，且slotScope不存在, 
+    // |> 则给el添加slot属性，作为元素的shadow DOM(隐藏DOM元素，如Chrome滚动条的Dom元素)
+    // |> tag不是template，即普通属性
+    // |> slotScope不存在，则不存在作用域
     if (el.tag !== "template" && !el.slotScope) {
       addAttr(el, "slot", slotTarget, getRawBindingAttr(el, "slot"));
     }
   }
 
-  // 2.6 v-slot syntax
+  // Vue 2.6 v-slot新语法
   if (process.env.NEW_SLOT_SYNTAX) {
     if (el.tag === "template") {
-      // v-slot on <template>
+      
+      // -> v-slot on <template>
+
+      // 通过正则从el.attrsList中取出绑定的值
       const slotBinding = getAndRemoveAttrByRegex(el, slotRE);
       if (slotBinding) {
+
+        // 非生产环境打印⚠️信息
         if (process.env.NODE_ENV !== "production") {
           if (el.slotTarget || el.slotScope) {
             warn(`Unexpected mixed usage of different slot syntaxes.`, el);
@@ -909,15 +1009,21 @@ function processSlotContent(el) {
             );
           }
         }
+
+        // 获取slot的名称name，以及是否动态dynamic
         const { name, dynamic } = getSlotName(slotBinding);
         el.slotTarget = name;
         el.slotTargetDynamic = dynamic;
         el.slotScope = slotBinding.value || emptySlotScopeToken; // force it into a scoped slot for perf
       }
     } else {
-      // v-slot on component, denotes default slot
+      //  -> v-slot on component, denotes default slot
+
+      // 通过正则从el.attrsList中取出绑定的值
       const slotBinding = getAndRemoveAttrByRegex(el, slotRE);
       if (slotBinding) {
+
+        // 非生产环境打印⚠️信息
         if (process.env.NODE_ENV !== "production") {
           if (!maybeComponent(el)) {
             warn(
@@ -936,9 +1042,15 @@ function processSlotContent(el) {
             );
           }
         }
-        // add the component's children to its default slot
+        // -> 把组件的子类节点添加到它的默认插槽slot里
+
+        // 取出el上的scopedSlots或者初始化scopedSlots = {}
         const slots = el.scopedSlots || (el.scopedSlots = {});
+
+        // 获取slot的名称name，以及是否动态dynamic
         const { name, dynamic } = getSlotName(slotBinding);
+
+        // 创建slot节点的包含器，即父级AST节点
         const slotContainer = (slots[name] = createASTElement(
           "template",
           [],
@@ -954,8 +1066,12 @@ function processSlotContent(el) {
         });
         slotContainer.slotScope = slotBinding.value || emptySlotScopeToken;
         // remove children as they are returned from scopedSlots now
+
+        // 删除从scopedSlots返回的子节点
         el.children = [];
-        // mark el non-plain so data gets generated
+
+        // 将el标记为非普通节点，以便生出数据
+        // |> plain = true --> 该节点所对应的虚拟节点将不包含任何 VNodeData。
         el.plain = false;
       }
     }
@@ -978,7 +1094,10 @@ function getSlotName(binding) {
       { name: `"${name}"`, dynamic: false };
 }
 
-// handle <slot/> outlets
+/**
+ * 处理<slot/>出口
+ * |> 把元素的name绑定到el.slotName上
+ */
 function processSlotOutlet(el) {
   if (el.tag === "slot") {
     el.slotName = getBindingAttr(el, "name");
@@ -993,6 +1112,11 @@ function processSlotOutlet(el) {
   }
 }
 
+/**
+ * 处理内置组件component(动态组件)
+ * |> 1. 处理is属性
+ * |> 2. 处理inline-template属性
+ */
 function processComponent(el) {
   let binding;
   if ((binding = getBindingAttr(el, "is"))) {
