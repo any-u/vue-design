@@ -676,9 +676,12 @@ export function processElement(element: ASTElement, options: CompilerOptions) {
 
   // 执行转换逻辑
   // |> transforms --> modules里的transformNode
+  // |> 处理class属性和style属性
   for (let i = 0; i < transforms.length; i++) {
     element = transforms[i](element, options) || element;
   }
+
+  // 处理属性
   processAttrs(element);
   return element;
 }
@@ -1127,32 +1130,56 @@ function processComponent(el) {
   }
 }
 
+/**
+ * 处理attr属性
+ */
 function processAttrs(el) {
   const list = el.attrsList;
   let i, l, name, rawName, value, modifiers, syncGen, isDynamic;
+
+  // 遍历属性列表
   for (i = 0, l = list.length; i < l; i++) {
     name = rawName = list[i].name;
     value = list[i].value;
+
+    // 判断字符串是否是以v-、@或:开头
     if (dirRE.test(name)) {
-      // mark element as dynamic
+      // 标记元素是动态属性
       el.hasBindings = true;
-      // modifiers
+      // 从属性中取出修饰符，如.once、.self
       modifiers = parseModifiers(name.replace(dirRE, ""));
-      // support .foo shorthand syntax for the .prop modifier
+    
       if (process.env.VBIND_PROP_SHORTHAND && propBindRE.test(name)) {
+
+        // 为:foo.prop="bar"创建.foo="bar"的缩写方案
+        // |> .prop修饰符 -> DOM property 绑定而不是作为 attribute 绑定
+        // |> 参考[https://cn.vuejs.org/v2/api/#v-bind]
         (modifiers || (modifiers = {})).prop = true;
         name = `.` + name.slice(1).replace(modifierRE, "");
       } else if (modifiers) {
+
+        // name -> 属性值移除修饰符
         name = name.replace(modifierRE, "");
       }
+
+      
       if (bindRE.test(name)) {
-        // v-bind
+        // v-bind 指令
+
+        // 解析指令名称
         name = name.replace(bindRE, "");
+
+        // 解析指令值
         value = parseFilters(value);
+
+        // 判断是否是动态参数
+        // |> 如 <a v-bind:[attributeName]="url"> ... </a>
         isDynamic = dynamicArgRE.test(name);
         if (isDynamic) {
           name = name.slice(1, -1);
         }
+
+        // 非生产环境，且值为空字符串，则打印⚠️信息
         if (
           process.env.NODE_ENV !== "production" &&
           value.trim().length === 0
@@ -1161,16 +1188,33 @@ function processAttrs(el) {
             `The value for a v-bind expression cannot be empty. Found in "v-bind:${name}"`
           );
         }
+
+
         if (modifiers) {
+
+          // 使用了.prop修饰符且非动态参数
+          // |> name 驼峰化
+          // |> name = innerHtml, 转成 innerHTML
           if (modifiers.prop && !isDynamic) {
             name = camelize(name);
             if (name === "innerHtml") name = "innerHTML";
           }
+
+          // 使用了.camel修饰符且非动态
+          // |> name 驼峰化
           if (modifiers.camel && !isDynamic) {
             name = camelize(name);
           }
+
+          // 使用了.sync修饰符
           if (modifiers.sync) {
+
+            // 生成任务代码
+            // |> 内部是一个赋值功能工作，避免手动赋值
+            // 此处，如value = 'foo' --> syncGen = "foo=$event"
             syncGen = genAssignmentCode(value, `$event`);
+            
+            // 非动态属性
             if (!isDynamic) {
               addHandler(
                 el,
@@ -1192,6 +1236,8 @@ function processAttrs(el) {
                   list[i]
                 );
               }
+
+            // 动态属性
             } else {
               // handler w/ dynamic event name
               addHandler(
