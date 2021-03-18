@@ -1143,6 +1143,7 @@ function processAttrs(el) {
     value = list[i].value;
 
     // 判断字符串是否是以v-、@或:开头
+    // |> 即指令属性
     if (dirRE.test(name)) {
       // 标记元素是动态属性
       el.hasBindings = true;
@@ -1335,8 +1336,16 @@ function processAttrs(el) {
         }
       }
     } else {
-      // literal attribute
+
+      // --> 非指令属性
+
+      // 非生产环境
       if (process.env.NODE_ENV !== "production") {
+
+        // 解析字面量表达
+        // 存在则打印⚠️信息
+        // |> <div id="{{ isTrue ? 'a' : 'b' }}"></div> ❌
+        // |> 应为 <div :id="isTrue ? 'a' : 'b'"></div> ✅
         const res = parseText(value, delimiters);
         if (res) {
           warn(
@@ -1348,9 +1357,13 @@ function processAttrs(el) {
           );
         }
       }
+
+      // 添加属性信息
       addAttr(el, name, JSON.stringify(value), list[i]);
-      // #6887 firefox doesn't update muted state if set via attribute
-      // even immediately after element creation
+
+      // el不是组件，属性是muted，且使用元素对象原生的prop进行绑定
+      // |> 如果使用attr, firefox不会更新muted属性
+      // |> 使用props处理muted属性
       if (
         !el.component &&
         name === "muted" &&
