@@ -19,7 +19,8 @@ function transformNode (el: ASTElement, options: CompilerOptions) {
   // 非生产环境且匹配到了class信息
   if (process.env.NODE_ENV !== 'production' && staticClass) {
 
-    // 解析class属性，解析成功，说明在非绑定的class属性中使用了字面量表达式，则打印⚠️信息
+    // 解析class属性，解析成功，说明在非绑定的class属性中使用了字面量表达式，
+    // |> 则打印⚠️信息
     // |> 如：<div class="{{ isActive ? 'active' : '' }}"></div>
     const res = parseText(staticClass, options.delimiters)
     if (res) {

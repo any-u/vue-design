@@ -8,12 +8,23 @@ import {
   baseWarn
 } from 'compiler/helpers'
 
+
+/**
+ * 解析class属性
+ */
 function transformNode (el: ASTElement, options: CompilerOptions) {
   const warn = options.warn || baseWarn
+
+  // 从el.attrsList中取出style属性
   const staticStyle = getAndRemoveAttr(el, 'style')
   if (staticStyle) {
-    /* istanbul ignore if */
+    
+    // 非生产环境
     if (process.env.NODE_ENV !== 'production') {
+
+      // 解析style属性，解析成功，说明在非绑定的class属性中使用了字面量表达式，
+      // |>则打印⚠️信息
+      // |> 如：<div style="{{ isActive ? 'active' : '' }}"></div>
       const res = parseText(staticStyle, options.delimiters)
       if (res) {
         warn(
@@ -28,6 +39,8 @@ function transformNode (el: ASTElement, options: CompilerOptions) {
     el.staticStyle = JSON.stringify(parseStyleText(staticStyle))
   }
 
+  // 查找是否绑定了style属性
+  // 通过v-bind:style 或 :style方式
   const styleBinding = getBindingAttr(el, 'style', false /* getStatic */)
   if (styleBinding) {
     el.styleBinding = styleBinding
