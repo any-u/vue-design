@@ -55,12 +55,23 @@ export function parseText (
       // |> 序列化原因 -> 确保解析后它依旧是字符串
       tokens.push(JSON.stringify(tokenValue))
     }
-    // tag token
+    // -> 解析表达式部分
+    // 解析表达式部分，即exp="foo"
     const exp = parseFilters(match[1].trim())
+
+    // token添加`_s(foo)`
     tokens.push(`_s(${exp})`)
+
+    // rawTokens添加 { '@binding': foo }
     rawTokens.push({ '@binding': exp })
+    
+    // 修改索引
     lastIndex = index + match[0].length
   }
+
+  // |> 如果原始文本是abc{{foo}}def时
+  // |> 经过上面处理后，lastIndex为10， 而text是13
+  // |> 此时就需要添加后面的文本内容
   if (lastIndex < text.length) {
     rawTokens.push(tokenValue = text.slice(lastIndex))
     tokens.push(JSON.stringify(tokenValue))
