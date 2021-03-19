@@ -8,26 +8,32 @@ let isPlatformReservedTag
 const genStaticKeysCached = cached(genStaticKeys)
 
 /**
- * Goal of the optimizer: walk the generated template AST tree
- * and detect sub-trees that are purely static, i.e. parts of
- * the DOM that never needs to change.
- *
- * Once we detect these sub-trees, we can:
- *
- * 1. Hoist them into constants, so that we no longer need to
- *    create fresh nodes for them on each re-render;
- * 2. Completely skip them in the patching process.
+ * 优化程序的目标：遍历生成的模板AST树并检测纯静态的子树，即子树中不需要更改的部分。
+ * 一旦检测到这些子树，我们就可以：
+ * |> 1.将它们提升为常量，这样我们就不再需要在每次重新渲染时为它们创建新的节点；
+ * |> 2.在patch过程中完全跳过它们。
  */
 export function optimize (root: ?ASTElement, options: CompilerOptions) {
   if (!root) return
+
+  // options.staticKeys --> 即['staticStyle', 'staticClass']
   isStaticKey = genStaticKeysCached(options.staticKeys || '')
+  
+  // 是否是平台保留标签
+  // |> 保留标签 --> HTML上的标签, SVG
   isPlatformReservedTag = options.isReservedTag || no
-  // first pass: mark all non-static nodes.
+
+  // 第一步：标记所有的非静态节点
   markStatic(root)
-  // second pass: mark static roots.
+
+  // 第二步，标记所有的静态根节点
   markStaticRoots(root, false)
 }
 
+/**
+ * 获取静态属性值
+ * |> 如tag，plain等
+ */
 function genStaticKeys (keys: string): Function {
   return makeMap(
     'type,tag,attrsList,attrsMap,plain,parent,children,attrs,start,end,rawAttrsMap' +
@@ -35,6 +41,10 @@ function genStaticKeys (keys: string): Function {
   )
 }
 
+/**
+ * 标记所有非静态节点
+ * |> 即节点的static 标为false
+ */
 function markStatic (node: ASTNode) {
   node.static = isStatic(node)
   if (node.type === 1) {
@@ -97,6 +107,14 @@ function markStaticRoots (node: ASTNode, isInFor: boolean) {
   }
 }
 
+/**
+ * 判断节点是否是静态节点
+ * |> type = 2  -> 非静态节点, 字面量表达式节点
+ * |> type = 3  -> 静态节点, 纯文本节点
+ * |> type = 1，则
+ * |> |> 1. pre属性为true，使用v-pre或本身是pre标签
+ * |> |> 2. 或者没有绑定，没有v-if, 没有v-for, 非内建组件(slot或component)，非组件，
+ */
 function isStatic (node: ASTNode): boolean {
   if (node.type === 2) { // expression
     return false
@@ -114,6 +132,9 @@ function isStatic (node: ASTNode): boolean {
   ))
 }
 
+/**
+ * 判断节点是否是 [template标签] 或者 [使用v-for] 的节点的后代节点
+ */
 function isDirectChildOfTemplateFor (node: ASTElement): boolean {
   while (node.parent) {
     node = node.parent

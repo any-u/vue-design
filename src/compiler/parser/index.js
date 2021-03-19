@@ -93,11 +93,11 @@ export function parse(
   platformGetTagNamespace = options.getTagNamespace || no;
 
   // 校检是否是保留标签
-  // 保留标签 --> html 或 svg
+  // 保留标签 --> html上的标签 或 svg
   const isReservedTag = options.isReservedTag || no;
 
   // 校检是否是组件
-  // |> el上存在component属性，且不是保留标签(html/svg)
+  // |> el上存在component属性，且不是保留标签(html上的标签/svg)
   maybeComponent = (el: ASTElement) => !!el.component || !isReservedTag(el.tag);
 
   transforms = pluckModuleFunction(options.modules, "transformNode");

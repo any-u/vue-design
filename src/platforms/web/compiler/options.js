@@ -35,7 +35,7 @@ export const baseOptions: CompilerOptions = {
   canBeLeftOpenTag, 
 
   // 校检是否是保留标签
-  // 保留标签 --> html 或 svg
+  // 保留标签 --> html上的标签 或 svg
   isReservedTag,
 
   // 获取标签命名空间
