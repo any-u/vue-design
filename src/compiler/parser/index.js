@@ -148,6 +148,8 @@ export function parse(
     // 删除元素的尾随空格字符串
     trimEndingWhitespace(element);
 
+    // 如果没使用v-pre且元素没解析过(processed为false)
+    // |> processElement解析元素
     if (!inVPre && !element.processed) {
       element = processElement(element, options);
     }
@@ -222,6 +224,11 @@ export function parse(
     }
   }
 
+  /**
+   * 检测根节点的约束情况
+   * |> 1. 根节点不能是slot或template
+   * |> 2. 根节点不能使用v-for指令
+   */
   function checkRootConstraints(el) {
     if (el.tag === "slot" || el.tag === "template") {
       warnOnce(
