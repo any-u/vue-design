@@ -113,7 +113,8 @@ function markStaticRoots (node: ASTNode, isInFor: boolean) {
  * |> type = 3  -> 静态节点, 纯文本节点
  * |> type = 1，则
  * |> |> 1. pre属性为true，使用v-pre或本身是pre标签
- * |> |> 2. 或者没有绑定，没有v-if, 没有v-for, 非内建组件(slot或component)，非组件，
+ * |> |> 2. 或者没有绑定，没有v-if, 没有v-for, 
+ * |> |>    非内建组件(slot或component)，非组件，isDirectChildOfTemplateFor检验, 且所有的属性都是静态属性
  */
 function isStatic (node: ASTNode): boolean {
   if (node.type === 2) { // expression
@@ -133,7 +134,10 @@ function isStatic (node: ASTNode): boolean {
 }
 
 /**
- * 判断节点是否是 [template标签] 或者 [使用v-for] 的节点的后代节点
+ * 判断节点是否不是 [template标签] 或者 [使用v-for的节点]的后代节点
+ * |> template标签 -> false
+ * |> 使用v-for的节点 -> true
+ * |> 否则 -> false
  */
 function isDirectChildOfTemplateFor (node: ASTElement): boolean {
   while (node.parent) {
