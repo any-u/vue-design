@@ -46,7 +46,11 @@ function genStaticKeys (keys: string): Function {
  * |> 即节点的static 标为false
  */
 function markStatic (node: ASTNode) {
+  
+  // 通过isStatic检验node本身是否是静态节点
   node.static = isStatic(node)
+
+  // 只有type = 1的情况，才会调整节点的static属性
   if (node.type === 1) {
     // do not make component slot content static. this avoids
     // 1. components not able to mutate slot nodes
