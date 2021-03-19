@@ -141,7 +141,10 @@ export function parse(
 
   /**
    * 关闭标签元素
-   * 
+   * |> 1. 删除尾随空格
+   * |> 2. 处理pre状态，v-pre和pre标签
+   * |> 3. 根节点相关特殊处理
+   * |> 4. 父节点children添加当前元素，以及当前元素的parent指向父节点
    */
   function closeElement(element) {
 
@@ -153,18 +156,25 @@ export function parse(
     if (!inVPre && !element.processed) {
       element = processElement(element, options);
     }
-    // tree management
+
+    // 检测根节点
+    // |> 栈为空且element元素不是根节点root
+    // 即<div v-if="foo">foo</div><div></div>
+    // 此情况下当解析完第二个div时，元素element就不是根节点root
     if (!stack.length && element !== root) {
-      // allow root elements with v-if, v-else-if and v-else
+
+      // 允许根节点使用v-if,v-else-if和v-else
       if (root.if && (element.elseif || element.else)) {
         if (process.env.NODE_ENV !== "production") {
           checkRootConstraints(element);
         }
+        // 添加v-else-if条件
         addIfCondition(root, {
           exp: element.elseif,
           block: element,
         });
       } else if (process.env.NODE_ENV !== "production") {
+        // 元素必须包含在根节点下，如果使用v-if，必须使用v-else-if
         warnOnce(
           `Component template should contain exactly one root element. ` +
             `If you are using v-if on multiple elements, ` +
@@ -173,38 +183,63 @@ export function parse(
         );
       }
     }
+
+    // 如果存在父元素，且forbidden为false，即元素未被禁止
+    // forbidden -> 检验元素是否是被禁止的标签
+    // |> style标签，
+    // |> 或script标签、且属性集合中type不存在，或type为"text/javascript")
     if (currentParent && !element.forbidden) {
+      // 元素存在elseif或else
+      // |> 则把元素添加到父元素的ifConditions中
       if (element.elseif || element.else) {
         processIfConditions(element, currentParent);
       } else {
+
+        // 判断element是否存在slotScope, 即element是否是父元素的插槽内容
+        // |> 如果是插槽内容，则把元素添加到父元素的scopeSlots中
         if (element.slotScope) {
-          // scoped slot
-          // keep it in the children list so that v-else(-if) conditions can
-          // find it as the prev node.
+
+          // |> ❓ 早期版本此处作为else-if来处理，而不是放到else语句中
+          // |> ⚠️ 即slot插槽语句也会把它添加到父元素的children里
+          // |> ✅ 如果slot语句使用v-if，如果添加到children里，后面v-else(-if)语句便方便查找v-if块
           const name = element.slotTarget || '"default"';
           (currentParent.scopedSlots || (currentParent.scopedSlots = {}))[
             name
           ] = element;
         }
+
+        // 既不是v-else(-if)语句
+        // |>则该元素作为普通节点
+        // |> 1. 父元素的children添加该元素
+        // |> 2. 该元素的父级指向父元素
         currentParent.children.push(element);
         element.parent = currentParent;
       }
     }
 
-    // final children cleanup
-    // filter out scoped slots
+    // 最后清除slot语句
+    // 清除掉当前元素的子节点中的插槽节点
     element.children = element.children.filter((c) => !(c: any).slotScope);
-    // remove trailing whitespace node again
+    // 再次删除尾随空格
     trimEndingWhitespace(element);
 
-    // check pre state
+    // 检查v-pre状态
+    // |> 关闭元素时，结束v-pre状态
+    // |> 即inVPre改为false
     if (element.pre) {
       inVPre = false;
     }
+
+    // 检查pre标签
+    // |> 关闭元素时，结束pre标签状态
+    // |> 即inPre改为false
     if (platformIsPreTag(element.tag)) {
       inPre = false;
     }
-    // apply post-transforms
+
+    // 执行后转换
+    // |> 目前后转转换不存在要转换的点
+    // |> 未来考虑添加的转换点
     for (let i = 0; i < postTransforms.length; i++) {
       postTransforms[i](element, options);
     }
@@ -335,7 +370,7 @@ export function parse(
       }
 
       // 校检元素是否是被禁止的标签、且非SSR环境
-      // |> 如style标签，
+      // |> style标签，
       // |> 或script标签、且属性集合中type不存在，或type为"text/javascript")
       // --> 设置元素forbidden 为true, 且打印⚠️信息
       if (isForbiddenTag(element) && !isServerRendering()) {
