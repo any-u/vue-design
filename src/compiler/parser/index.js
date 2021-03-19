@@ -910,9 +910,16 @@ function processIf(el) {
   }
 }
 
+/**
+ * 通过v-else节点查找添加v-if节点
+ * |> 使用v-if的节点的ifConditions属性添加v-else的节点
+ */
 function processIfConditions(el, parent) {
+
+  // 查找最近的type=1的节点, 即最近的带有v-if的节点
   const prev = findPrevElement(parent.children);
   if (prev && prev.if) {
+    // 如果前一节点使用v-if属性，则把当前元素添加到前一节点的ifConditions属性上
     addIfCondition(prev, {
       exp: el.elseif,
       block: el,
@@ -926,6 +933,14 @@ function processIfConditions(el, parent) {
   }
 }
 
+/**
+ * 查找最近的type=1的元素
+ * |>如：<div v-if="foo">foo</div><div v-else></div>
+ * |>当处理第二个div的尾元素</div>时，因为自身带有v-else属性，则调用processIfConditions
+ * |>此处即查找带有v-if的元素
+ * |>⚠️ type=2是字面量表达式或type=3是纯文本
+ * |>所以即查找最近的type=1的元素
+ */
 function findPrevElement(children: Array<any>): ASTElement | void {
   let i = children.length;
   while (i--) {
