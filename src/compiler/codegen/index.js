@@ -29,6 +29,9 @@ export class CodegenState {
   // module中的data生成函数
   // |> 目前主要是生成class和style相关的数据
   dataGenFns: Array<DataGenFunction>;
+
+  // bind,cloak,html,model,on,text -> 绑定的指令
+  // 继承的基础指令(on、bind和cloak)和编译指令(model、text和html)
   directives: { [key: string]: DirectiveFunction };
   maybeComponent: (el: ASTElement) => boolean;
   onceId: number;
@@ -365,7 +368,10 @@ export function genData (el: ASTElement, state: CodegenState): string {
 }
 
 /**
- * 生成指令代码
+ * 生成指令和自定义指令代码
+ * |> 特殊指令 -> v-text、v-html、v-show、v-cloak和v-model
+ * |> [继承的基础指令(on、bind和cloak)和编译指令(model、text和html)]会调用特定的指令生成函数
+ * |> model会继续调用普通情况下的代码生成函数，生成指令渲染字符串结果
  */
 function genDirectives (el: ASTElement, state: CodegenState): string | void {
   const dirs = el.directives
@@ -375,15 +381,22 @@ function genDirectives (el: ASTElement, state: CodegenState): string | void {
   let i, l, dir, needRuntime
 
   // 遍历指令列表
+  // |> 指的是特殊指令和自定义指令
+  // |> 特殊指令 -> v-text、v-html、v-show、v-cloak和v-model
   for (i = 0, l = dirs.length; i < l; i++) {
     dir = dirs[i]
     needRuntime = true
+
+    // 获取默认的指令对应的代码生成函数
     const gen: DirectiveFunction = state.directives[dir.name]
     if (gen) {
-      // compile-time directive that manipulates AST.
-      // returns true if it also needs a runtime counterpart.
+      // 调用AST的编译时指令方法，如果还需要运行它，则返回true
+      // |> 当前仅model指令还需要运行它
+      // 不返回，则needRuntime即为false
       needRuntime = !!gen(el, dir, state.warn)
     }
+
+    // 如果需要继续运行改方法，则生成指令渲染结果
     if (needRuntime) {
       hasRuntime = true
       res += `{name:"${dir.name}",rawName:"${dir.rawName}"${
@@ -395,6 +408,8 @@ function genDirectives (el: ASTElement, state: CodegenState): string | void {
       }},`
     }
   }
+
+  // 移除尾逗号，然后补充']'
   if (hasRuntime) {
     return res.slice(0, -1) + ']'
   }

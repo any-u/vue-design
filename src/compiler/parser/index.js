@@ -1349,8 +1349,8 @@ function processAttrs(el) {
         addHandler(el, name, value, modifiers, false, warn, list[i], isDynamic);
       } else {
 
-        // 其他指令和自定义指令
-        // |> 其他指令 -> v-text、v-html、v-show、v-cloak和v-model
+        // 特殊指令和自定义指令
+        // |> 特殊指令 -> v-text、v-html、v-show、v-cloak和v-model
         name = name.replace(dirRE, "");
 
         // 解析属性，如自定义属性v-custom:arg
@@ -1372,8 +1372,8 @@ function processAttrs(el) {
           }
         }
 
-        // 添加其他指令和自定义指令
-        // |> 其他指令 -> v-text、v-html、v-show、v-cloak和v-model
+        // 添加特殊指令和自定义指令
+        // |> 特殊指令 -> v-text、v-html、v-show、v-cloak和v-model
         // 添加到el.directives上
         addDirective(
           el,

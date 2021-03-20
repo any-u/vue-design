@@ -40,7 +40,8 @@ export function addRawAttr (el: ASTElement, name: string, value: any, range?: Ra
 }
 
 /**
- * 给el添加指令
+ * 给el添加特殊指令和自定义指令
+ * |> 特殊指令 -> v-text、v-html、v-show、v-cloak和v-model
  * |> 1.给el.directives添加指令对象
  * |> 2.给el的plain设为false
  * |> plain = true --> 该节点所对应的虚拟节点将不包含任何 VNodeData
