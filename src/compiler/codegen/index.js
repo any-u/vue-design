@@ -75,11 +75,19 @@ export function generate (
   }
 }
 
+
+/**
+ * 生成元素节点的生成代码函数的字符
+ */
 export function genElement (el: ASTElement, state: CodegenState): string {
+  // 父元素存在
+  // 则设置当前元素的pre状态等同于父元素的pre状态
+  // pre -> 使用v-pre 或 pre标签
   if (el.parent) {
     el.pre = el.pre || el.parent.pre
   }
 
+  // 静态根节点且未处理过
   if (el.staticRoot && !el.staticProcessed) {
     return genStatic(el, state)
   } else if (el.once && !el.onceProcessed) {
@@ -93,11 +101,16 @@ export function genElement (el: ASTElement, state: CodegenState): string {
   } else if (el.tag === 'slot') {
     return genSlot(el, state)
   } else {
-    // component or element
+
+    // 组件或普通元素
     let code
+
+    // 组件
     if (el.component) {
       code = genComponent(el.component, el, state)
     } else {
+      // 普通元素
+
       let data
       if (!el.plain || (el.pre && state.maybeComponent(el))) {
         data = genData(el, state)
@@ -110,7 +123,10 @@ export function genElement (el: ASTElement, state: CodegenState): string {
         children ? `,${children}` : '' // children
       })`
     }
-    // module transforms
+
+    // module转换
+    // 调用modules中的transformCode
+    // |> transformCode暂不存在，可看做后续铺垫属性
     for (let i = 0; i < state.transforms.length; i++) {
       code = state.transforms[i](el, code)
     }
@@ -118,18 +134,34 @@ export function genElement (el: ASTElement, state: CodegenState): string {
   }
 }
 
-// hoist static sub-trees out
+/**
+ * 提升静态子树
+ */
 function genStatic (el: ASTElement, state: CodegenState): string {
+
+  // 把当前节点的静态处理(staticProcessed)标记为true
   el.staticProcessed = true
-  // Some elements (templates) need to behave differently inside of a v-pre
-  // node.  All pre nodes are static roots, so we can use this as a location to
-  // wrap a state change and reset it upon exiting the pre node.
+  
+
+  // 某些元素（模板）在v-pre节点内部需要具有不同的行为。 
+  // |> 所有pre节点都是静态根节点，
+  // |> 因此我们可以缓存原始状态，然后用新状态去生成静态代码，并在退出pre节点时将其重置。
+
+  // 缓存原始状态节点
   const originalPreState = state.pre
   if (el.pre) {
     state.pre = el.pre
   }
+
+  // 用state的新状态，去生成代码，添加到静态渲染函数staticRenderFns中
   state.staticRenderFns.push(`with(this){return ${genElement(el, state)}}`)
+
+  // 重置state.pre为原始状态
   state.pre = originalPreState
+
+  // |> state.staticRenderFns.length - 1 -> 代表新添加的静态渲染函数
+  // |> el.staticInFor -> 是否为在v-for下的静态节点
+  // |> _m 来自installRenderHelpers阶段中引入的renderStatic函数
   return `_m(${
     state.staticRenderFns.length - 1
   }${
