@@ -300,19 +300,25 @@ export function genData (el: ASTElement, state: CodegenState): string {
   if (el.pre) {
     data += `pre:true,`
   }
-  // record original tag name for components using "is" attribute
+
+  // 记录使用is属性的原始标签名称
   if (el.component) {
     data += `tag:"${el.tag}",`
   }
-  // module data generation functions
+
+  // module中的data生成函数
+  // |> 目前主要是生成class和style相关的数据
   for (let i = 0; i < state.dataGenFns.length; i++) {
     data += state.dataGenFns[i](el)
   }
+
   // attributes
+  // 标签上属性
   if (el.attrs) {
     data += `attrs:${genProps(el.attrs)},`
   }
   // DOM props
+  // 非Vue中设置的props
   if (el.props) {
     data += `domProps:${genProps(el.props)},`
   }
@@ -658,6 +664,10 @@ function genComponent (
   })`
 }
 
+/**
+ * props代码生成函数
+ * |> 属性和Dom props
+ */
 function genProps (props: Array<ASTAttr>): string {
   let staticProps = ``
   let dynamicProps = ``
@@ -689,6 +699,12 @@ function generateValue (value) {
 }
 
 // #3895, #4268
+/**
+ * 转换特殊的分隔符
+ * \u2028  -> 行分割符
+ * \u2029  -> 段分隔符
+ * |> 少见
+ */
 function transformSpecialNewlines (text: string): string {
   return text
     .replace(/\u2028/g, '\\u2028')
