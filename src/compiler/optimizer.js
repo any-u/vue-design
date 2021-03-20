@@ -51,10 +51,16 @@ function markStatic (node: ASTNode) {
   node.static = isStatic(node)
 
   // 只有type = 1的情况，才会调整节点的static属性
+  // |> type = 2, static是false
+  // |> type = 3, static是true
   if (node.type === 1) {
-    // do not make component slot content static. this avoids
-    // 1. components not able to mutate slot nodes
-    // 2. static slot content fails for hot-reloading
+
+    // 不要将组件插槽的内容设为静态。 这样可以避免
+    //  1.无法更改插槽节点的组件
+    //  2.静态插槽内容无法进行热重装
+
+    // 不是保留标签(html标签或SVG) ，不是tag，且没使用inline-template
+    // |> 直接返回， 不额外调整节点的static属性
     if (
       !isPlatformReservedTag(node.tag) &&
       node.tag !== 'slot' &&
@@ -62,6 +68,8 @@ function markStatic (node: ASTNode) {
     ) {
       return
     }
+
+    // 遍历子节点，如果子节点不是静态的，则把它的static属性也设为false
     for (let i = 0, l = node.children.length; i < l; i++) {
       const child = node.children[i]
       markStatic(child)
@@ -69,6 +77,8 @@ function markStatic (node: ASTNode) {
         node.static = false
       }
     }
+
+    // 遍历它的ifConditions中的节点，如果节点不是静态的，则把它的static属性也设为false
     if (node.ifConditions) {
       for (let i = 1, l = node.ifConditions.length; i < l; i++) {
         const block = node.ifConditions[i].block
