@@ -271,11 +271,14 @@ export function genFor (
     '})'
 }
 
+/**
+ * 生成data代码
+ */
 export function genData (el: ASTElement, state: CodegenState): string {
   let data = '{'
 
-  // directives first.
-  // directives may mutate the el's other properties before they are generated.
+  // 指令优先
+  // 指令可能会在其他属性之前会改变它们
   const dirs = genDirectives(el, state)
   if (dirs) data += dirs + ','
 
@@ -361,12 +364,17 @@ export function genData (el: ASTElement, state: CodegenState): string {
   return data
 }
 
+/**
+ * 生成指令代码
+ */
 function genDirectives (el: ASTElement, state: CodegenState): string | void {
   const dirs = el.directives
   if (!dirs) return
   let res = 'directives:['
   let hasRuntime = false
   let i, l, dir, needRuntime
+
+  // 遍历指令列表
   for (i = 0, l = dirs.length; i < l; i++) {
     dir = dirs[i]
     needRuntime = true
