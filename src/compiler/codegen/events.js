@@ -52,10 +52,15 @@ const modifierCode: { [key: string]: string } = {
   right: genGuard(`'button' in $event && $event.button !== 2`)
 }
 
+/**
+ * 事件events代码生成函数
+ * 
+ */
 export function genHandlers (
   events: ASTElementHandlers,
   isNative: boolean
 ): string {
+  // isNative -> 是否原生事件
   const prefix = isNative ? 'nativeOn:' : 'on:'
   let staticHandlers = ``
   let dynamicHandlers = ``
@@ -93,6 +98,9 @@ function genWeexHandler (params: Array<any>, handlerCode: string) {
     '}'
 }
 
+/**
+ * 单个event事件代码生成工具
+ */
 function genHandler (handler: ASTElementHandler | Array<ASTElementHandler>): string {
   if (!handler) {
     return 'function(){}'
