@@ -666,16 +666,22 @@ function genComponent (
 
 /**
  * props代码生成函数
- * |> 属性和Dom props
+ * ✅ 属性和Dom props
+ * |> 1. 静态属性生成
+ * |> 2. 动态属性生成
  */
 function genProps (props: Array<ASTAttr>): string {
   let staticProps = ``
   let dynamicProps = ``
+
+  // 遍历props
   for (let i = 0; i < props.length; i++) {
     const prop = props[i]
     const value = __WEEX__
       ? generateValue(prop.value)
       : transformSpecialNewlines(prop.value)
+
+    // 动态则添加动态Props，否则则添加静态Props
     if (prop.dynamic) {
       dynamicProps += `${prop.name},${value},`
     } else {
@@ -683,6 +689,9 @@ function genProps (props: Array<ASTAttr>): string {
     }
   }
   staticProps = `{${staticProps.slice(0, -1)}}`
+
+  // 动态属性则通过_d包裹
+  // |> _d -> installRenderHelpers阶段中的bindDynamicKeys
   if (dynamicProps) {
     return `_d(${staticProps},[${dynamicProps.slice(0, -1)}])`
   } else {
