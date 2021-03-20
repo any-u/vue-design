@@ -10,14 +10,30 @@ type TransformFunction = (el: ASTElement, code: string) => string;
 type DataGenFunction = (el: ASTElement) => string;
 type DirectiveFunction = (el: ASTElement, dir: ASTDirective, warn: Function) => boolean;
 
+/**
+ * 代码生成状态类(code generate state)
+ */
 export class CodegenState {
+
+  // 编译配置项
   options: CompilerOptions;
+  
+  // 警告函数
   warn: Function;
+
+  // 转换函数
+  // 调用modules中的transformCode
+  // |> transformCode暂不存在，可看做后续铺垫属性
   transforms: Array<TransformFunction>;
+
+  // module中的data生成函数
+  // |> 目前主要是生成class和style相关的数据
   dataGenFns: Array<DataGenFunction>;
   directives: { [key: string]: DirectiveFunction };
   maybeComponent: (el: ASTElement) => boolean;
   onceId: number;
+
+  // 静态渲染函数数组
   staticRenderFns: Array<string>;
   pre: boolean;
 
@@ -44,7 +60,14 @@ export function generate (
   ast: ASTElement | void,
   options: CompilerOptions
 ): CodegenResult {
+  
+  // 初始化代码生成状态类
   const state = new CodegenState(options)
+
+  // 判断抽象语法树AST是否存在
+  // |> 存在则调用genElement生成元素
+  // |> 返回 _c("div") 的字符串
+  // |> _c 是 createELement，在initRender中定义
   const code = ast ? genElement(ast, state) : '_c("div")'
   return {
     render: `with(this){return ${code}}`,
