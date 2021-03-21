@@ -113,8 +113,16 @@ function genHandler (handler: ASTElementHandler | Array<ASTElementHandler>): str
     return `[${handler.map(handler => genHandler(handler)).join(',')}]`
   }
 
+  // 校检是否是方法名
+  // 如 @click="doSomething"中的doSomething
   const isMethodPath = simplePathRE.test(handler.value)
+
+  // 校检是否是函数表达式
+  // 如 @click="() => {}" or @click="function(){}"
   const isFunctionExpression = fnExpRE.test(handler.value)
+
+  // 校检是否是函数调用
+  // @click="doSomething($event)"
   const isFunctionInvocation = simplePathRE.test(handler.value.replace(fnInvokeRE, ''))
 
   if (!handler.modifiers) {
