@@ -64,6 +64,9 @@ export function genHandlers (
   const prefix = isNative ? 'nativeOn:' : 'on:'
   let staticHandlers = ``
   let dynamicHandlers = ``
+
+  // 遍历事件events
+  // 分别处理静态处理器和动态处理器
   for (const name in events) {
     const handlerCode = genHandler(events[name])
     if (events[name] && events[name].dynamic) {
