@@ -125,7 +125,9 @@ function genHandler (handler: ASTElementHandler | Array<ASTElementHandler>): str
   // @click="doSomething($event)"
   const isFunctionInvocation = simplePathRE.test(handler.value.replace(fnInvokeRE, ''))
 
+  // 没有使用修饰符
   if (!handler.modifiers) {
+    // 如果是方法名，或函数调用，直接返回
     if (isMethodPath || isFunctionExpression) {
       return handler.value
     }
@@ -137,10 +139,13 @@ function genHandler (handler: ASTElementHandler | Array<ASTElementHandler>): str
       isFunctionInvocation ? `return ${handler.value}` : handler.value
     }}` // inline statement
   } else {
+    // 使用修饰符
+
     let code = ''
     let genModifierCode = ''
     const keys = []
     for (const key in handler.modifiers) {
+      // 修饰符存在
       if (modifierCode[key]) {
         genModifierCode += modifierCode[key]
         // left/right
@@ -148,6 +153,8 @@ function genHandler (handler: ASTElementHandler | Array<ASTElementHandler>): str
           keys.push(key)
         }
       } else if (key === 'exact') {
+        // 检验key是否是exact
+        // |> 校检系统修饰符组合处理
         const modifiers: ASTModifiers = (handler.modifiers: any)
         genModifierCode += genGuard(
           ['ctrl', 'shift', 'alt', 'meta']
