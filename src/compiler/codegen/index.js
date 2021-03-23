@@ -172,14 +172,27 @@ function genStatic (el: ASTElement, state: CodegenState): string {
   })`
 }
 
-// v-once
+/**
+ * 生成v-once相关代码
+ * |> 1.处理v-if特殊情况
+ * |> 2.处理v-for特殊情况
+ */
 function genOnce (el: ASTElement, state: CodegenState): string {
+
+  // 设置onceProcessed为true，表示el的once被处理过，避免二次处理
   el.onceProcessed = true
+
+  // 如果el存在if，且if未被处理过
+  // 调用genIf生成if相关代码
   if (el.if && !el.ifProcessed) {
     return genIf(el, state)
   } else if (el.staticInFor) {
+    // v-for下的静态节点
+
     let key = ''
     let parent = el.parent
+
+    // 找出父元素的for属性，然后用key表示父元素的key属性
     while (parent) {
       if (parent.for) {
         key = parent.key
@@ -187,6 +200,11 @@ function genOnce (el: ASTElement, state: CodegenState): string {
       }
       parent = parent.parent
     }
+
+    // key 属性不存在则打印⚠️信息，并调用genElement生成元素代码
+    // |> 即 <div v-for="item of list"><p v-once>{{item}}</p></div>
+    // |> p属性使用v-once时，首次渲染后应使用静态渲染，但作为v-for下的属性，如果不给index，无法确定哪一个子项作为静态渲染方式
+    // |> 即此情况下，v-for必须添加index属性，表示v-once对应的index索引
     if (!key) {
       process.env.NODE_ENV !== 'production' && state.warn(
         `v-once can only be used inside v-for that is keyed. `,
@@ -194,33 +212,68 @@ function genOnce (el: ASTElement, state: CodegenState): string {
       )
       return genElement(el, state)
     }
+
+    // _o 来自于installRenderHelpers中的markOnce
     return `_o(${genElement(el, state)},${state.onceId++},${key})`
   } else {
     return genStatic(el, state)
   }
 }
 
+/**
+ * 生成v-if相关代码 
+ * |> 设置ifProcess为true
+ * |> 调用genIfConditions处理el.ifConditions，生成ifConditions条件代码
+ */
 export function genIf (
   el: any,
   state: CodegenState,
-  altGen?: Function,
+
+  // alt -> 替代， altGen -> 替代的生成函数
+  altGen?: Function, 
+
+  // altEmpty -> 替代的空文本
   altEmpty?: string
 ): string {
-  el.ifProcessed = true // avoid recursion
+  
+  // 避免重复渲染
+  el.ifProcessed = true 
   return genIfConditions(el.ifConditions.slice(), state, altGen, altEmpty)
 }
 
+/**
+ * 生成ifConditions条件代码
+ * |> 按顺序处理ifCondition中的每一个节点，并且会移出数组
+ * |> 每一个节点使用三元表达式去拼接
+ * |> 递归调用 genIfConditions 去处理剩下的 ifCondition
+ */
 function genIfConditions (
   conditions: ASTIfConditions,
   state: CodegenState,
   altGen?: Function,
   altEmpty?: string
 ): string {
+
+  // if条件不存在，则返回
   if (!conditions.length) {
     return altEmpty || '_e()'
   }
 
   const condition = conditions.shift()
+
+  // 条件存在表达式，则生成条件判断
+  /**
+   * 如：
+   * <div>
+   *    <p v-if="type === 1"></p>
+   *    <p v-else-if="type === 2"></p>
+   *    <p v-else></p>
+   * </div>
+   * 
+   * 第一次时生成 " (type === 1)?_c('p'):genIfConditions( 剩下的 ifCondition )"
+   * 第二次时生成 " (type === 1)?_c('p'):( type === 2?_c( 'p'):genIfConditions( 剩下的 ifCondition ) )"
+   * 最后生成    " (type === 1)?_c('p'):(type === 2)?_c('p'):_c('p')"
+   */
   if (condition.exp) {
     return `(${condition.exp})?${
       genTernaryExp(condition.block)
@@ -231,7 +284,7 @@ function genIfConditions (
     return `${genTernaryExp(condition.block)}`
   }
 
-  // v-if with v-once should generate code like (a)?_m(0):_m(1)
+  // 带上v-once的v-if应该生成像(a)?_m(0):_m(1)的代码
   function genTernaryExp (el) {
     return altGen
       ? altGen(el, state)
@@ -317,24 +370,31 @@ export function genData (el: ASTElement, state: CodegenState): string {
   if (el.attrs) {
     data += `attrs:${genProps(el.attrs)},`
   }
+
   // DOM props
   // 非Vue中设置的props
   if (el.props) {
     data += `domProps:${genProps(el.props)},`
   }
+
   // event handlers
+  // 普通事件处理器
   if (el.events) {
     data += `${genHandlers(el.events, false)},`
   }
+
+  // 原生事件处理器
   if (el.nativeEvents) {
     data += `${genHandlers(el.nativeEvents, true)},`
   }
+
   // slot target
-  // only for non-scoped slots
+  // 插槽，此处用作无作用域插槽
   if (el.slotTarget && !el.slotScope) {
     data += `slot:${el.slotTarget},`
   }
-  // scoped slots
+
+  // 作用域插槽
   if (el.scopedSlots) {
     data += `${genScopedSlots(el, el.scopedSlots, state)},`
   }
@@ -446,17 +506,18 @@ function genScopedSlots (
   slots: { [key: string]: ASTElement },
   state: CodegenState
 ): string {
-  // by default scoped slots are considered "stable", this allows child
-  // components with only scoped slots to skip forced updates from parent.
-  // but in some cases we have to bail-out of this optimization
-  // for example if the slot contains dynamic names, has v-if or v-for on them...
+  // 默认情况下，作用域插槽被认为是“稳定的”，这使得只有作用域插槽的子组件可以跳过来自父代的强制更新。 
+  // 但在某些情况下，
+  // 例如，如果广告位包含动态名称，在其上带有v-if或v-for，则我们必须放弃这种优化措施...
   let needsForceUpdate = el.for || Object.keys(slots).some(key => {
     const slot = slots[key]
     return (
       slot.slotTargetDynamic ||
       slot.if ||
       slot.for ||
-      containsSlotChild(slot) // is passing down slot from parent which may be dynamic
+
+      // 存在slot的子节点
+      containsSlotChild(slot) 
     )
   })
 
@@ -518,11 +579,20 @@ function containsSlotChild (el: ASTNode): boolean {
   return false
 }
 
+/**
+ * 生成作用域插槽代码
+ * 
+ */
 function genScopedSlot (
   el: ASTElement,
   state: CodegenState
 ): string {
+
+  // 检测是否是旧式语法
   const isLegacySyntax = el.attrsMap['slot-scope']
+
+  // 存在if、没处理过if, 并且不是旧式语法
+  // 通过genIf处理if插槽
   if (el.if && !el.ifProcessed && !isLegacySyntax) {
     return genIf(el, state, genScopedSlot, `null`)
   }
