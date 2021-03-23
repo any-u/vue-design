@@ -685,11 +685,17 @@ function getNormalizationType (
     if (el.type !== 1) {
       continue
     }
+
+    // el需要规范化或者el的ifConditions中存在block需要规范的
+    // |> res -> 2
     if (needsNormalization(el) ||
         (el.ifConditions && el.ifConditions.some(c => needsNormalization(c.block)))) {
       res = 2
       break
     }
+
+    // 如果el 是组件 或 el的ifConditions中存在block是组件
+    // |> res = 1
     if (maybeComponent(el) ||
         (el.ifConditions && el.ifConditions.some(c => maybeComponent(c.block)))) {
       res = 1
@@ -700,7 +706,7 @@ function getNormalizationType (
 
 
 /**
- * 需要规范化
+ * 校检是否需要规范化
  * for不存在或tag是template或tag是slot
  */
 function needsNormalization (el: ASTElement): boolean {
