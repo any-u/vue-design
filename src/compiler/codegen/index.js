@@ -667,17 +667,21 @@ export function genChildren (
   }
 }
 
-// determine the normalization needed for the children array.
-// 0: no normalization needed
-// 1: simple normalization needed (possible 1-level deep nested array)
-// 2: full normalization needed
+// 确定子数组所需的规范化
+// 0 -> 无序规范化
+// 1 -> 需要简单的规范化(可能1级嵌套数组)
+// 2 -> 需要完全规范化
 function getNormalizationType (
   children: Array<ASTNode>,
   maybeComponent: (el: ASTElement) => boolean
 ): number {
   let res = 0
+
+  // 遍历子节点
   for (let i = 0; i < children.length; i++) {
     const el: ASTNode = children[i]
+
+    // type不为1， 即元素不为表达式，也不为文本
     if (el.type !== 1) {
       continue
     }
@@ -694,6 +698,11 @@ function getNormalizationType (
   return res
 }
 
+
+/**
+ * 需要规范化
+ * for不存在或tag是template或tag是slot
+ */
 function needsNormalization (el: ASTElement): boolean {
   return el.for !== undefined || el.tag === 'template' || el.tag === 'slot'
 }
