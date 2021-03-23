@@ -138,7 +138,7 @@ export function genElement (el: ASTElement, state: CodegenState): string {
 }
 
 /**
- * 提升静态子树
+ * 生成静态节点代码
  */
 function genStatic (el: ASTElement, state: CodegenState): string {
 
@@ -294,17 +294,26 @@ function genIfConditions (
   }
 }
 
+/**
+ * 生成v-for相关代码
+ * |> 针对无key情况打印⚠️信息
+ * |> 生成相应代码
+ */
 export function genFor (
   el: any,
   state: CodegenState,
   altGen?: Function,
   altHelper?: string
 ): string {
+
+  // 取出表达式exp，别名alias，迭代器1(iterator1)和迭代器2(iterator2)
   const exp = el.for
   const alias = el.alias
   const iterator1 = el.iterator1 ? `,${el.iterator1}` : ''
   const iterator2 = el.iterator2 ? `,${el.iterator2}` : ''
 
+  // 非生产环境，标签名称不为slot，标签名称不为template，并且key不存在
+  // |> 打印⚠️信息
   if (process.env.NODE_ENV !== 'production' &&
     state.maybeComponent(el) &&
     el.tag !== 'slot' &&
@@ -320,7 +329,10 @@ export function genFor (
     )
   }
 
-  el.forProcessed = true // avoid recursion
+  // 避免重复渲染
+  el.forProcessed = true
+
+  // _l 来自于installRenderHelpers中的renderList
   return `${altHelper || '_l'}((${exp}),` +
     `function(${alias}${iterator1}${iterator2}){` +
       `return ${(altGen || genElement)(el, state)}` +
@@ -596,6 +608,9 @@ function genScopedSlot (
   if (el.if && !el.ifProcessed && !isLegacySyntax) {
     return genIf(el, state, genScopedSlot, `null`)
   }
+
+  // 存在for且没处理过for
+  // 通过for处理for插槽
   if (el.for && !el.forProcessed) {
     return genFor(el, state, genScopedSlot)
   }
@@ -609,11 +624,15 @@ function genScopedSlot (
         : genChildren(el, state) || 'undefined'
       : genElement(el, state)
     }}`
-  // reverse proxy v-slot without scope on this.$slots
+
+  // 反向代理this.$slots上的没有作用域范围的v-slot插槽
   const reverseProxy = slotScope ? `` : `,proxy:true`
   return `{key:${el.slotTarget || `"default"`},fn:${fn}${reverseProxy}}`
 }
 
+/**
+ * 生成子节点代码
+ */
 export function genChildren (
   el: ASTElement,
   state: CodegenState,
@@ -624,7 +643,8 @@ export function genChildren (
   const children = el.children
   if (children.length) {
     const el: any = children[0]
-    // optimize single v-for
+    // 优化单个for
+    // 子节点数量为1，使用了v-for，标签名称不为template，并且不为slot
     if (children.length === 1 &&
       el.for &&
       el.tag !== 'template' &&
@@ -635,6 +655,8 @@ export function genChildren (
         : ``
       return `${(altGenElement || genElement)(el, state)}${normalizationType}`
     }
+
+
     const normalizationType = checkSkip
       ? getNormalizationType(children, state.maybeComponent)
       : 0
@@ -676,6 +698,12 @@ function needsNormalization (el: ASTElement): boolean {
   return el.for !== undefined || el.tag === 'template' || el.tag === 'slot'
 }
 
+/**
+ * 处理节点
+ * |> type = 1，说明是标签，用genElement处理
+ * |> type = 3且是注释, 用genComment处理
+ * |> 其他，说明是文本或表达式，用genText处理
+ */
 function genNode (node: ASTNode, state: CodegenState): string {
   if (node.type === 1) {
     return genElement(node, state)
@@ -686,9 +714,18 @@ function genNode (node: ASTNode, state: CodegenState): string {
   }
 }
 
+/**
+ * 处理表达式或非注释文本
+ * |> type = 2,是表达式 -> text.expression
+ * |> 其他，是普通文本 -> tex.tex
+ */
 export function genText (text: ASTText | ASTExpression): string {
   return `_v(${text.type === 2
-    ? text.expression // no need for () because already wrapped in _s()
+    // 不需要使用(), 因为已经被包装在_s里了
+    // |> _s 来自于installRenderHelpers中的toString
+    ? text.expression 
+
+    // transformSpecialNewlines -> 处理特殊分隔符
     : transformSpecialNewlines(JSON.stringify(text.text))
   })`
 }
