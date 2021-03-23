@@ -54,7 +54,7 @@ const modifierCode: { [key: string]: string } = {
 
 /**
  * 事件events代码生成函数
- * 
+ * |> 遍历events事件，根据动态和静态添加到对应的处理器数组中
  */
 export function genHandlers (
   events: ASTElementHandlers,
@@ -68,14 +68,22 @@ export function genHandlers (
   // 遍历事件events
   // 分别处理静态处理器和动态处理器
   for (const name in events) {
+    // 生成事件处理代码
     const handlerCode = genHandler(events[name])
+
+    // 将事件处理代码添加到对应的处理器数组中
+    // |> dynamicHandlers -> 动态处理器数组
+    // |> staticHandlers -> 静态处理器数组
     if (events[name] && events[name].dynamic) {
       dynamicHandlers += `${name},${handlerCode},`
     } else {
       staticHandlers += `"${name}":${handlerCode},`
     }
   }
+  // 静态处理器删除最后符号，用于下方在后面添加"])"
   staticHandlers = `{${staticHandlers.slice(0, -1)}}`
+
+  // 分动态和静态情况，添加前缀代码
   if (dynamicHandlers) {
     return prefix + `_d(${staticHandlers},[${dynamicHandlers.slice(0, -1)}])`
   } else {
@@ -103,6 +111,9 @@ function genWeexHandler (params: Array<any>, handlerCode: string) {
 
 /**
  * 单个event事件代码生成工具
+ * |> 1.方法名事件，如@click="doSomething"中的doSomething
+ * |> 2.函数表达式事件，如@click="() => {}" or @click="function(){}"
+ * |> 3.函数调用事件，如@click="doSomething($event)"
  */
 function genHandler (handler: ASTElementHandler | Array<ASTElementHandler>): string {
   if (!handler) {
@@ -147,8 +158,13 @@ function genHandler (handler: ASTElementHandler | Array<ASTElementHandler>): str
     for (const key in handler.modifiers) {
       // 修饰符存在
       if (modifierCode[key]) {
+
+        // 拼接内部的事件修饰符
         genModifierCode += modifierCode[key]
-        // left/right
+
+        // left/right两个修饰符
+        // |> 普通right事件会被修改为contextmenu事件，
+        // |> 动态right事件会走到此处,即v-on:[foo].right="handleRight"
         if (keyCodes[key]) {
           keys.push(key)
         }
@@ -163,16 +179,22 @@ function genHandler (handler: ASTElementHandler | Array<ASTElementHandler>): str
             .join('||')
         )
       } else {
+        // 其他修饰符
         keys.push(key)
       }
     }
+
+    // 拼接自定义修饰符
     if (keys.length) {
       code += genKeyFilter(keys)
     }
-    // Make sure modifiers like prevent and stop get executed after key filtering
+
+    // 确保prevent和stop修饰符在按键过滤之后执行
     if (genModifierCode) {
       code += genModifierCode
     }
+
+    // 事件回调主体
     const handlerCode = isMethodPath
       ? `return ${handler.value}.apply(null, arguments)`
       : isFunctionExpression
@@ -190,9 +212,9 @@ function genHandler (handler: ASTElementHandler | Array<ASTElementHandler>): str
 
 function genKeyFilter (keys: Array<string>): string {
   return (
-    // make sure the key filters only apply to KeyboardEvents
-    // #9441: can't use 'keyCode' in $event because Chrome autofill fires fake
-    // key events that do not have keyCode property...
+    // 确保键过滤器仅适用于keyboard事件
+    // |> 不能在$event中使用"keyCode"
+    // |> 因为Chrome自动填充会触发不具有keyCode属性的伪造按键事件
     `if(!$event.type.indexOf('key')&&` +
     `${keys.map(genFilterCode).join('&&')})return null;`
   )
