@@ -119,6 +119,9 @@ export function genElement (el: ASTElement, state: CodegenState): string {
         data = genData(el, state)
       }
 
+      // 校检el.inlineTemplate的结果
+      // |> true -> null
+      // |> false -> genChildren生成子节点代码
       const children = el.inlineTemplate ? null : genChildren(el, state, true)
       code = `_c('${el.tag}'${
         data ? `,${data}` : '' // data
@@ -410,7 +413,8 @@ export function genData (el: ASTElement, state: CodegenState): string {
   if (el.scopedSlots) {
     data += `${genScopedSlots(el, el.scopedSlots, state)},`
   }
-  // component v-model
+
+  // 处理el上的model属性
   if (el.model) {
     data += `model:{value:${
       el.model.value
@@ -420,7 +424,8 @@ export function genData (el: ASTElement, state: CodegenState): string {
       el.model.expression
     }},`
   }
-  // inline-template
+
+  // 内联模板
   if (el.inlineTemplate) {
     const inlineTemplate = genInlineTemplate(el, state)
     if (inlineTemplate) {
@@ -593,7 +598,9 @@ function containsSlotChild (el: ASTNode): boolean {
 
 /**
  * 生成作用域插槽代码
- * 
+ * |> 使用v-if，调用genIf处理if插槽代码
+ * |> 使用v-for，调用genFor处理for插槽代码
+ * |> 处理作用域插槽代码
  */
 function genScopedSlot (
   el: ASTElement,
@@ -614,14 +621,29 @@ function genScopedSlot (
   if (el.for && !el.forProcessed) {
     return genFor(el, state, genScopedSlot)
   }
+
+  // 生成作用域字段
   const slotScope = el.slotScope === emptySlotScopeToken
     ? ``
     : String(el.slotScope)
   const fn = `function(${slotScope}){` +
+
+    // el是否是template标签
     `return ${el.tag === 'template'
+
+      // 使用v-if且采用旧式语法
       ? el.if && isLegacySyntax
+
+        // 是否使用v-if
+        // |> -> 调用genChildren生成子节点，否则返回undefined
         ? `(${el.if})?${genChildren(el, state) || 'undefined'}:undefined`
+      
+        // 使用v-if且采用旧式语法 -> false
+        // |> 调用genChildren生成子节点代码
         : genChildren(el, state) || 'undefined'
+
+    // 不是template标签
+    // |> -> 调用genElement生成节点代码
       : genElement(el, state)
     }}`
 
@@ -632,6 +654,13 @@ function genScopedSlot (
 
 /**
  * 生成子节点代码
+ * |> 如果使用for，且子节点为1，标签名称不为template，并且不为slot -> 调用genElement生成代码
+ * |> 遍历children，调用genNode生成代码
+ * 
+ * normalizationType -> 子节点数组所需的规范化
+ * |> 0 -> 无序规范化
+ * |> 1 -> 需要简单的规范化(可能1级嵌套数组)
+ * |>2 -> 需要完全规范化
  */
 export function genChildren (
   el: ASTElement,
@@ -645,12 +674,19 @@ export function genChildren (
     const el: any = children[0]
     // 优化单个for
     // 子节点数量为1，使用了v-for，标签名称不为template，并且不为slot
+    // 调用genElement重新生成代码
     if (children.length === 1 &&
       el.for &&
       el.tag !== 'template' &&
       el.tag !== 'slot'
     ) {
+
+      // normalizationType -> 子节点数组规范化方式
+      // 判断是否跳过检查
       const normalizationType = checkSkip
+      // 判断el是否为组件
+      // 1 -> 需要简单的规范化
+      // 0 -> 无序规范化
         ? state.maybeComponent(el) ? `,1` : `,0`
         : ``
       return `${(altGenElement || genElement)(el, state)}${normalizationType}`
@@ -660,6 +696,8 @@ export function genChildren (
     const normalizationType = checkSkip
       ? getNormalizationType(children, state.maybeComponent)
       : 0
+
+    // 遍历children调用genNode处理节点
     const gen = altGenNode || genNode
     return `[${children.map(c => gen(c, state)).join(',')}]${
       normalizationType ? `,${normalizationType}` : ''
@@ -667,7 +705,7 @@ export function genChildren (
   }
 }
 
-// 确定子数组所需的规范化
+// 确定子节点数组所需的规范化
 // 0 -> 无序规范化
 // 1 -> 需要简单的规范化(可能1级嵌套数组)
 // 2 -> 需要完全规范化
