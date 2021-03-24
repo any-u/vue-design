@@ -432,18 +432,23 @@ export function genData (el: ASTElement, state: CodegenState): string {
       data += `${inlineTemplate},`
     }
   }
+
+  // 将结尾的,改成}
   data = data.replace(/,$/, '') + '}'
-  // v-bind dynamic argument wrap
-  // v-bind with dynamic arguments must be applied using the same v-bind object
-  // merge helper so that class/style/mustUseProp attrs are handled correctly.
+  
+  // v-bind动态参数包装
+  // |> 具有动态参数的v-bind必须使用相同的v-bind对象合并方法
+  // |> 以便正确处理class / style / mustUseProp属性。
   if (el.dynamicAttrs) {
     data = `_b(${data},"${el.tag}",${genProps(el.dynamicAttrs)})`
   }
-  // v-bind data wrap
+
+  // v-bind数据处理
   if (el.wrapData) {
     data = el.wrapData(data)
   }
-  // v-on data wrap
+
+  // v-on 数据处理
   if (el.wrapListeners) {
     data = el.wrapListeners(data)
   }
@@ -538,17 +543,15 @@ function genScopedSlots (
     )
   })
 
-  // #9534: if a component with scoped slots is inside a conditional branch,
-  // it's possible for the same component to be reused but with different
-  // compiled slot content. To avoid that, we generate a unique key based on
-  // the generated code of all the slot contents.
+  // 如果具有作用域插槽的组件使用了v-if，
+  // |> 则可能存在使用不同插槽内容的相同组件 
+  // |> 为了避免这种情况，我们根据所有插槽内容的生成代码生成一个唯一密钥。
+  // |> 具体案例可参考issue#9534
   let needsKey = !!el.if
 
-  // OR when it is inside another scoped slot or v-for (the reactivity may be
-  // disconnected due to the intermediate scope variable)
-  // #9438, #9506
-  // TODO: this can be further optimized by properly analyzing in-scope bindings
-  // and skip force updating ones that do not actually use scope variables.
+  // 或者当它处于另一个作用域插槽内或者使用v-for
+  // |>由于中间作用域变量，响应式可能会无效
+  // |>具体案例可参考issue#9438, #9506
   if (!needsForceUpdate) {
     let parent = el.parent
     while (parent) {
@@ -566,6 +569,7 @@ function genScopedSlots (
     }
   }
 
+  // 遍历插槽生成作用域插槽代码
   const generatedSlots = Object.keys(slots)
     .map(key => genScopedSlot(slots[key], state))
     .join(',')
