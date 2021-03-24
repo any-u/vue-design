@@ -526,6 +526,11 @@ function genInlineTemplate (el: ASTElement, state: CodegenState): ?string {
   }
 }
 
+/**
+ * 生成ScopedSlots作用域插槽代码
+ * |> 1.处理v-for和v-if标记
+ * |> 2.遍历scopedSlots数组，分别调用genScopedSlot生成作用域插槽代码
+ */
 function genScopedSlots (
   el: ASTElement,
   slots: { [key: string]: ASTElement },
@@ -794,6 +799,11 @@ export function genComment (comment: ASTText): string {
   return `_e(${JSON.stringify(comment.text)})`
 }
 
+/**
+ * 生成slot内容
+ * |> 生成slot下的children代码
+ * |> 生成attr代码
+ */
 function genSlot (el: ASTElement, state: CodegenState): string {
   const slotName = el.slotName || '"default"'
   const children = genChildren(el, state)

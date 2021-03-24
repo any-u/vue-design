@@ -1,7 +1,7 @@
 /* @flow */
 
 /**
- * Runtime helper for rendering static trees.
+ * 用于渲染静态树的运行时方法
  */
 export function renderStatic (
   index: number,
@@ -9,24 +9,27 @@ export function renderStatic (
 ): VNode | Array<VNode> {
   const cached = this._staticTrees || (this._staticTrees = [])
   let tree = cached[index]
-  // if has already-rendered static tree and not inside v-for,
-  // we can reuse the same tree.
+  
+  // 如果已经渲染了静态树并且不在v-for内部，则可以重用同一棵树。
   if (tree && !isInFor) {
     return tree
   }
-  // otherwise, render a fresh tree.
+  
+  // 否则，重新渲染树
   tree = cached[index] = this.$options.staticRenderFns[index].call(
     this._renderProxy,
     null,
     this // for render fns generated for functional component templates
   )
+
+  // 标记静态属性
   markStatic(tree, `__static__${index}`, false)
   return tree
 }
 
 /**
- * Runtime helper for v-once.
- * Effectively it means marking the node as static with a unique key.
+ * v-once的运行时方法
+ * 实际上，这意味着使用唯一键将节点标记为静态。
  */
 export function markOnce (
   tree: VNode | Array<VNode>,
@@ -42,6 +45,9 @@ function markStatic (
   key: string,
   isOnce: boolean
 ) {
+
+  // 如果树是数组
+  // |> 则遍历树，分别标记静态节点
   if (Array.isArray(tree)) {
     for (let i = 0; i < tree.length; i++) {
       if (tree[i] && typeof tree[i] !== 'string') {

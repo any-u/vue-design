@@ -20,6 +20,8 @@ export function installRenderHelpers (target: any) {
   target._t = renderSlot
   target._q = looseEqual
   target._i = looseIndexOf
+
+  // 渲染静态树
   target._m = renderStatic
   target._f = resolveFilter
   target._k = checkKeyCodes
