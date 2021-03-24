@@ -344,6 +344,9 @@ export function genFor (
 
 /**
  * 生成data代码
+ * |> 1. 添加指令、key、ref、refInFor、pre、component
+ * |> 2. 生成代码 -> dataGenFns、genProps、genHandlers、genScopedSlots、model、inlineTemplate
+ * |>    dynamicAttrs、wrapData、wrapListener
  */
 export function genData (el: ASTElement, state: CodegenState): string {
   let data = '{'
