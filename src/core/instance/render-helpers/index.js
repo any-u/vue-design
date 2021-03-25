@@ -20,6 +20,8 @@ export function installRenderHelpers (target: any) {
 
   // 渲染v-for列表节点
   target._l = renderList
+
+  // 渲染<slot></slot>节点
   target._t = renderSlot
   target._q = looseEqual
   target._i = looseIndexOf
