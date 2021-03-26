@@ -78,6 +78,9 @@ export const createEmptyVNode = (text: string = '') => {
   return node
 }
 
+/**
+ * 创建文本vnode节点 -> 调用new VNode生成
+ */
 export function createTextVNode (val: string | number) {
   return new VNode(undefined, undefined, undefined, String(val))
 }

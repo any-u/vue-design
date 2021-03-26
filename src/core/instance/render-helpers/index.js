@@ -41,6 +41,7 @@ export function installRenderHelpers (target: any) {
   // 合并v-bind="object"到vnode的data属性上
   target._b = bindObjectProps
 
+  // 创建文本vnode节点
   target._v = createTextVNode
   target._e = createEmptyVNode
   target._u = resolveScopedSlots
