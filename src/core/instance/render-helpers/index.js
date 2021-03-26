@@ -23,7 +23,10 @@ export function installRenderHelpers (target: any) {
 
   // 渲染<slot></slot>节点
   target._t = renderSlot
-  target._q = looseEqual
+  
+  // 检查值是否一致
+  target._q = 
+  // 检查与其值相等的索引
   target._i = looseIndexOf
 
   // 渲染静态树

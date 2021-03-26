@@ -435,9 +435,8 @@ export function mergeOptions (
 }
 
 /**
- * Resolve an asset.
- * This function is used because child instances need access
- * to assets defined in its ancestor chain.
+ * 解析资源
+ * |> 此功能是因为子实例需要访问其原型链(祖先)上的资源
  */
 export function resolveAsset (
   options: Object,
@@ -450,13 +449,20 @@ export function resolveAsset (
     return
   }
   const assets = options[type]
-  // check local registration variations first
+
+  // 检测它本身是否存在指定的属性
+  // hasOwn -> Object.prototype.hasOwnProperty => 校检对象自身属性中是否具有指定的属性
   if (hasOwn(assets, id)) return assets[id]
+
+  // 检查是否是驼峰命名法 -> 首字母小写
   const camelizedId = camelize(id)
   if (hasOwn(assets, camelizedId)) return assets[camelizedId]
+
+  // 检查是否是帕斯卡命名法 -> 首字符大写
   const PascalCaseId = capitalize(camelizedId)
   if (hasOwn(assets, PascalCaseId)) return assets[PascalCaseId]
-  // fallback to prototype chain
+
+  // 回退到原型链
   const res = assets[id] || assets[camelizedId] || assets[PascalCaseId]
   if (process.env.NODE_ENV !== 'production' && warnMissing && !res) {
     warn(
