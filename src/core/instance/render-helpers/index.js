@@ -31,6 +31,8 @@ export function installRenderHelpers (target: any) {
 
   // 渲染静态树
   target._m = renderStatic
+
+  // 加载filters资源
   target._f = resolveFilter
   target._k = checkKeyCodes
   target._b = bindObjectProps
