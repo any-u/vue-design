@@ -43,6 +43,8 @@ export function installRenderHelpers (target: any) {
 
   // 创建文本vnode节点
   target._v = createTextVNode
+
+  // 创建空白vnode节点
   target._e = createEmptyVNode
   target._u = resolveScopedSlots
   target._g = bindObjectListeners

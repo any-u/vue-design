@@ -1,5 +1,8 @@
 /* @flow */
 
+/**
+ * 解析作用域插槽
+ */
 export function resolveScopedSlots (
   fns: ScopedSlotsData, // see flow/vnode
   res?: Object,
