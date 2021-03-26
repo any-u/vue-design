@@ -25,7 +25,7 @@ export function installRenderHelpers (target: any) {
   target._t = renderSlot
   
   // 检查值是否一致
-  target._q = 
+  target._q = looseEqual
   // 检查与其值相等的索引
   target._i = looseIndexOf
 
@@ -34,8 +34,13 @@ export function installRenderHelpers (target: any) {
 
   // 加载filters资源
   target._f = resolveFilter
+
+  // 检查keyCodes(键码值)
   target._k = checkKeyCodes
+
+  // 合并v-bind="object"到vnode的data属性上
   target._b = bindObjectProps
+
   target._v = createTextVNode
   target._e = createEmptyVNode
   target._u = resolveScopedSlots
