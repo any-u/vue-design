@@ -49,7 +49,13 @@ export function installRenderHelpers (target: any) {
 
   // 解析scopedSlots属性
   target._u = resolveScopedSlots
+
+  // 绑定事件监听属性
   target._g = bindObjectListeners
+
+  // 绑定v-on上的动态属性key
   target._d = bindDynamicKeys
+
+  
   target._p = prependModifier
 }

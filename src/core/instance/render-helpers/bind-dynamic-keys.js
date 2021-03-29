@@ -11,13 +11,19 @@
 
 import { warn } from 'core/util/debug'
 
+/**
+ * 绑定动态属性key值
+ */
 export function bindDynamicKeys (baseObj: Object, values: Array<any>): Object {
+  // 遍历value上的key值，将其绑到baseObj上
   for (let i = 0; i < values.length; i += 2) {
     const key = values[i]
+    // 
     if (typeof key === 'string' && key) {
       baseObj[values[i]] = values[i + 1]
     } else if (process.env.NODE_ENV !== 'production' && key !== '' && key !== null) {
-      // null is a special value for explicitly removing a binding
+      // 非生产环境且key不是空字符串且key不为null
+      // |> null是用于显示删除绑定的特殊值
       warn(
         `Invalid value for dynamic directive argument (expected string or null): ${key}`,
         this
