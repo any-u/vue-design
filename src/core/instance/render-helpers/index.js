@@ -56,6 +56,6 @@ export function installRenderHelpers (target: any) {
   // 绑定v-on上的动态属性key
   target._d = bindDynamicKeys
 
-  
+  // 动态添加修饰符标记到事件名称
   target._p = prependModifier
 }

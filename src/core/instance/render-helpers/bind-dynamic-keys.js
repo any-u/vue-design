@@ -33,9 +33,8 @@ export function bindDynamicKeys (baseObj: Object, values: Array<any>): Object {
   return baseObj
 }
 
-// helper to dynamically append modifier runtime markers to event names.
-// ensure only append when value is already string, otherwise it will be cast
-// to string and cause the type check to miss.
+// 运行时动态添加修饰符标记到事件名称的助手
+// |> 确保仅在value已经是字符串时追加，否则强制转换为string，并会导致类型检查丢失
 export function prependModifier (value: any, symbol: string): any {
   return typeof value === 'string' ? symbol + value : value
 }
