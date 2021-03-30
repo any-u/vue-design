@@ -78,9 +78,14 @@ export function renderMixin (Vue: Class<Component>) {
 
   Vue.prototype._render = function (): VNode {
     const vm: Component = this
+
+    // 取出$options上的render函数和父级vnode
+    // |> vm是子组件时，才存在父级vnode
     const { render, _parentVnode } = vm.$options
 
     if (_parentVnode) {
+
+      // 父级vnode存在，设置当前组件上的作用域插槽属性$scopedSlots
       vm.$scopedSlots = normalizeScopedSlots(
         _parentVnode.data.scopedSlots,
         vm.$slots,
