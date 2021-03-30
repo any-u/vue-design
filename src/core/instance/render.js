@@ -93,22 +93,19 @@ export function renderMixin (Vue: Class<Component>) {
       )
     }
 
-    // set parent vnode. this allows render functions to have access
-    // to the data on the placeholder node.
+    // 设置父级vnode，允许渲染函数有能力访问占位节点上的data
     vm.$vnode = _parentVnode
-    // render self
+    
+    // 渲染它自己
     let vnode
     try {
-      // There's no need to maintain a stack because all render fns are called
-      // separately from one another. Nested component's render fns are called
-      // when parent component is patched.
+      // 无需维护堆栈，因为所有渲染函数都分开调用，当父组件被patch时，嵌套调用组件的渲染函数
       currentRenderingInstance = vm
       vnode = render.call(vm._renderProxy, vm.$createElement)
     } catch (e) {
       handleError(e, vm, `render`)
-      // return error render result,
-      // or previous vnode to prevent render error causing blank component
-      /* istanbul ignore else */
+
+      // 返回错误的渲染结果，或者返回之前的vnode，以防渲染错误导致空白组件
       if (process.env.NODE_ENV !== 'production' && vm.$options.renderError) {
         try {
           vnode = vm.$options.renderError.call(vm._renderProxy, vm.$createElement, e)
@@ -122,11 +119,13 @@ export function renderMixin (Vue: Class<Component>) {
     } finally {
       currentRenderingInstance = null
     }
-    // if the returned array contains only a single node, allow it
+
+    // 如果返回的结果是单一接电脑的数组，则允许它
     if (Array.isArray(vnode) && vnode.length === 1) {
       vnode = vnode[0]
     }
-    // return empty vnode in case the render function errored out
+
+    // 如果渲染函数出错，则返回空的vnode
     if (!(vnode instanceof VNode)) {
       if (process.env.NODE_ENV !== 'production' && Array.isArray(vnode)) {
         warn(
@@ -137,7 +136,8 @@ export function renderMixin (Vue: Class<Component>) {
       }
       vnode = createEmptyVNode()
     }
-    // set parent
+
+    // 设置父级节点
     vnode.parent = _parentVnode
     return vnode
   }
