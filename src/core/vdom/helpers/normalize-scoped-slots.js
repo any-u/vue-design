@@ -4,19 +4,32 @@ import { def } from 'core/util/lang'
 import { normalizeChildren } from 'core/vdom/helpers/normalize-children'
 import { emptyObject } from 'shared/util'
 
+/**
+ * 格式化作用域插槽
+ */
 export function normalizeScopedSlots (
   slots: { [key: string]: Function } | void,
   normalSlots: { [key: string]: Array<VNode> },
   prevSlots?: { [key: string]: Function } | void
 ): any {
   let res
+  
+  // hasNormalSlots -> 是否存在普通插槽
   const hasNormalSlots = Object.keys(normalSlots).length > 0
+
+  // isStable -> 是否稳定
+  // |> $stable -> 是否存在动态属性
+  // |> hasNormalSlots -> 是否存在普通插槽
   const isStable = slots ? !!slots.$stable : !hasNormalSlots
   const key = slots && slots.$key
   if (!slots) {
+    
+    // slot不存在
+    // |> 初始化为{}
     res = {}
   } else if (slots._normalized) {
-    // fast path 1: child component re-render only, parent did not change
+
+    // 快速路径1： 仅重新渲染子组件，父组件未更改
     return slots._normalized
   } else if (
     isStable &&
@@ -26,8 +39,7 @@ export function normalizeScopedSlots (
     !hasNormalSlots &&
     !prevSlots.$hasNormal
   ) {
-    // fast path 2: stable scoped slots w/ no normal slots to proxy,
-    // only need to normalize once
+    // 快速路径2: 稳定的作用域插槽，具有/没有用于代理的标准插槽，只需要标准化一次
     return prevSlots
   } else {
     res = {}
@@ -37,14 +49,16 @@ export function normalizeScopedSlots (
       }
     }
   }
-  // expose normal slots on scopedSlots
+
+  // 在作用域插槽上暴露普通插槽
   for (const key in normalSlots) {
     if (!(key in res)) {
       res[key] = proxyNormalSlot(normalSlots, key)
     }
   }
-  // avoriaz seems to mock a non-extensible $scopedSlots object
-  // and when that is passed down this would cause an error
+
+  // avoriaz似乎模拟了一个不可扩展的$ scopedSlots对象，当该对象向下传递时，将导致错误
+  // avoriaz -> Vue测试库
   if (slots && Object.isExtensible(slots)) {
     (slots: any)._normalized = res
   }
@@ -66,9 +80,8 @@ function normalizeScopedSlot(normalSlots, key, fn) {
     ) ? undefined
       : res
   }
-  // this is a slot using the new v-slot syntax without scope. although it is
-  // compiled as a scoped slot, render fn users would expect it to be present
-  // on this.$slots because the usage is semantically a normal slot.
+  // 这是使用新语法的无作用域插槽，尽管它被编译为作用域插槽，但渲染函数(用户)希望它存在于this.$slots上。
+  // 因为它的用法在语义上是正常的插槽
   if (fn.proxy) {
     Object.defineProperty(normalSlots, key, {
       get: normalized,
