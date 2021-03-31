@@ -32,6 +32,12 @@ export const emptyNode = new VNode('', {}, [])
 
 const hooks = ['create', 'activate', 'update', 'remove', 'destroy']
 
+/**
+ * 判断两个节点是否相似
+ * |> 1.key相同
+ * |> 2.tag、isComment、isDef(vnode的data)与相同的input类型都相同
+ * |>   或a的isAsyncPlaceholder为true，两节点的asyncFactory相同且b.asyncFactory.error不存在
+ */
 function sameVnode (a, b) {
   return (
     a.key === b.key && (
@@ -73,6 +79,7 @@ export function createPatchFunction (backend) {
 
   const { modules, nodeOps } = backend
 
+  // 注入hooks钩子函数
   for (i = 0; i < hooks.length; ++i) {
     cbs[hooks[i]] = []
     for (j = 0; j < modules.length; ++j) {
@@ -698,20 +705,33 @@ export function createPatchFunction (backend) {
   }
 
   return function patch (oldVnode, vnode, hydrating, removeOnly) {
+    // 新vnode不存在
+    // 如果旧节点存在 -> 调用销毁hook
+    // -> 否则则直接return
     if (isUndef(vnode)) {
       if (isDef(oldVnode)) invokeDestroyHook(oldVnode)
       return
     }
 
+    // isInitialPatch -> 是否是初始化patch
+    // insertedVnodeQueue -> 插入vnode队列
     let isInitialPatch = false
     const insertedVnodeQueue = []
 
+    // 如果旧节点不存在
     if (isUndef(oldVnode)) {
-      // empty mount (likely as component), create new root element
+
+      // 空mount(像组件)，创建新的根元素
       isInitialPatch = true
       createElm(vnode, insertedVnodeQueue)
     } else {
+
+      // 旧节点和新节点都存在，即发生节点更新
+
+      // 通过旧vnode的nodeType判断是否是真实元素
       const isRealElement = isDef(oldVnode.nodeType)
+
+      // 如果不是正式节点，即组件，并且新旧节点相似
       if (!isRealElement && sameVnode(oldVnode, vnode)) {
         // patch existing root node
         patchVnode(oldVnode, vnode, insertedVnodeQueue, null, null, removeOnly)

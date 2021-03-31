@@ -71,6 +71,7 @@ export function lifecycleMixin (Vue: Class<Component>) {
     if (!prevVnode) {
 
       // 初始化渲染节点
+      // |> 参数: oldVnode, vnode, hydrating, removeOnly
       vm.$el = vm.__patch__(vm.$el, vnode, hydrating, false /* removeOnly */)
     } else {
 
