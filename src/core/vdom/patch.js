@@ -731,15 +731,17 @@ export function createPatchFunction (backend) {
       // 通过旧vnode的nodeType判断是否是真实元素
       const isRealElement = isDef(oldVnode.nodeType)
 
-      // 如果不是正式节点，即组件，并且新旧节点相似
+      // 如果不是真实节点，即组件，并且新旧节点相似
       if (!isRealElement && sameVnode(oldVnode, vnode)) {
         // patch existing root node
         patchVnode(oldVnode, vnode, insertedVnodeQueue, null, null, removeOnly)
       } else {
         if (isRealElement) {
-          // mounting to a real element
-          // check if this is server-rendered content and if we can perform
-          // a successful hydration.
+          // 如果是真实节点
+          // 检查是否是服务端渲染内容以及我们是否可以成功执行hydrate
+          // |> hydrate -> 注水，用于SSR 
+          // |> => 一个完整的网页可以看成是干货掺了水的结果，纯数据只是干巴巴的干货，不是给人看的，
+          // |> => 但是“注水”之后，变成可以展示的HTML，就变成浏览器可以解释用户能看的东西了，这过程就是hydrate。 
           if (oldVnode.nodeType === 1 && oldVnode.hasAttribute(SSR_ATTR)) {
             oldVnode.removeAttribute(SSR_ATTR)
             hydrating = true
