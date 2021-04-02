@@ -742,6 +742,10 @@ export function createPatchFunction (backend) {
           // |> hydrate -> 注水，用于SSR 
           // |> => 一个完整的网页可以看成是干货掺了水的结果，纯数据只是干巴巴的干货，不是给人看的，
           // |> => 但是“注水”之后，变成可以展示的HTML，就变成浏览器可以解释用户能看的东西了，这过程就是hydrate。 
+
+          // old节点是元素节点，且old节点有SSR相关属性
+          // |> old节点移除SSR相关属性
+          // |> hydrate(注水)设为true
           if (oldVnode.nodeType === 1 && oldVnode.hasAttribute(SSR_ATTR)) {
             oldVnode.removeAttribute(SSR_ATTR)
             hydrating = true
