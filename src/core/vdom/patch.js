@@ -745,11 +745,14 @@ export function createPatchFunction (backend) {
 
           // old节点是元素节点，且old节点有SSR相关属性
           // |> old节点移除SSR相关属性
-          // |> hydrate(注水)设为true
+          // |> hydrating(正在注水)设为true
           if (oldVnode.nodeType === 1 && oldVnode.hasAttribute(SSR_ATTR)) {
             oldVnode.removeAttribute(SSR_ATTR)
             hydrating = true
           }
+
+          // hydrating -> 正在注水
+          // 内部代码为SSR相关
           if (isTrue(hydrating)) {
             if (hydrate(oldVnode, vnode, insertedVnodeQueue)) {
               invokeInsertHook(vnode, insertedVnodeQueue, true)
@@ -764,16 +767,18 @@ export function createPatchFunction (backend) {
               )
             }
           }
-          // either not server-rendered, or hydration failed.
-          // create an empty node and replace it
+
+          // 不是SSR或注水失败
+          // 创建一个空白节点并替代它
           oldVnode = emptyNodeAt(oldVnode)
         }
 
-        // replacing existing element
+        // 替换存在的元素
         const oldElm = oldVnode.elm
+        // nodeOps节点函数 -> 跨平台实现的节点函数，此处为web条件
         const parentElm = nodeOps.parentNode(oldElm)
 
-        // create new node
+        // 调用createElm创建一个新节点
         createElm(
           vnode,
           insertedVnodeQueue,
@@ -784,7 +789,7 @@ export function createPatchFunction (backend) {
           nodeOps.nextSibling(oldElm)
         )
 
-        // update parent placeholder node element, recursively
+        // 递归更新父级占位符节点元素
         if (isDef(vnode.parent)) {
           let ancestor = vnode.parent
           const patchable = isPatchable(vnode)
