@@ -791,6 +791,7 @@ export function createPatchFunction (backend) {
 
         // 递归更新父级占位符节点元素
         if (isDef(vnode.parent)) {
+          // ancestor -> 祖先节点
           let ancestor = vnode.parent
           const patchable = isPatchable(vnode)
           while (ancestor) {
