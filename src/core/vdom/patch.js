@@ -820,7 +820,7 @@ export function createPatchFunction (backend) {
           }
         }
 
-        // destroy old node
+        // 销毁旧的节点
         if (isDef(parentElm)) {
           removeVnodes([oldVnode], 0, 0)
         } else if (isDef(oldVnode.tag)) {
