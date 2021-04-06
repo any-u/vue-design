@@ -793,29 +793,40 @@ export function createPatchFunction (backend) {
         if (isDef(vnode.parent)) {
           // ancestor -> 祖先节点
           let ancestor = vnode.parent
+
+          // vnode是可patch的
           const patchable = isPatchable(vnode)
           while (ancestor) {
             for (let i = 0; i < cbs.destroy.length; ++i) {
               cbs.destroy[i](ancestor)
             }
             ancestor.elm = vnode.elm
+
+            // 校检是否可patch
             if (patchable) {
+
+              // 如果可patch，且回调中的create存在，则调用create钩子
               for (let i = 0; i < cbs.create.length; ++i) {
                 cbs.create[i](emptyNode, ancestor)
               }
-              // #6513
-              // invoke insert hooks that may have been merged by create hooks.
-              // e.g. for directives that uses the "inserted" hook.
+
+              // 调用create钩子中可能合并的insert钩子。
+              // 例如，对于使用“inserted”钩子的指令。
               const insert = ancestor.data.hook.insert
               if (insert.merged) {
-                // start at index 1 to avoid re-invoking component mounted hook
+
+                // 从索引1开始，以避免重新调用安装在组件上的钩子
                 for (let i = 1; i < insert.fns.length; i++) {
                   insert.fns[i]()
                 }
               }
             } else {
+
+              // 注册ref属性
               registerRef(ancestor)
             }
+
+            // 将ancestor设为ancestor的parent
             ancestor = ancestor.parent
           }
         }
@@ -829,6 +840,7 @@ export function createPatchFunction (backend) {
       }
     }
 
+    // 调用insert钩子函数
     invokeInsertHook(vnode, insertedVnodeQueue, isInitialPatch)
     return vnode.elm
   }
