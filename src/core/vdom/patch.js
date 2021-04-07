@@ -129,6 +129,9 @@ export function createPatchFunction (backend) {
 
   let creatingElmInVPre = 0
 
+  /**
+   * 创建元素
+   */
   function createElm (
     vnode,
     insertedVnodeQueue,
@@ -139,15 +142,15 @@ export function createPatchFunction (backend) {
     index
   ) {
     if (isDef(vnode.elm) && isDef(ownerArray)) {
-      // This vnode was used in a previous render!
-      // now it's used as a new node, overwriting its elm would cause
-      // potential patch errors down the road when it's used as an insertion
-      // reference node. Instead, we clone the node on-demand before creating
-      // associated DOM element for it.
+
+      // 此vnode用于预先渲染中！
+      // 现在它被用作新节点，当插入引用节点时，重写它的elm可能会导致潜在的patch错误
+      // 因此，在创建关联的DOM元素前，我们先按需克隆节点
       vnode = ownerArray[index] = cloneVNode(vnode)
     }
 
-    vnode.isRootInsert = !nested // for transition enter check
+    // isRootInsert -> 用作transition检测
+    vnode.isRootInsert = !nested 
     if (createComponent(vnode, insertedVnodeQueue, parentElm, refElm)) {
       return
     }
