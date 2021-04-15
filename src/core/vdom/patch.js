@@ -221,13 +221,15 @@ export function createPatchFunction (backend) {
     let i = vnode.data
     if (isDef(i)) {
       const isReactivated = isDef(vnode.componentInstance) && i.keepAlive
+
+      // 存在hook且存在init钩子
+      // |> 调用init钩子函数
       if (isDef(i = i.hook) && isDef(i = i.init)) {
         i(vnode, false /* hydrating */)
       }
-      // after calling the init hook, if the vnode is a child component
-      // it should've created a child instance and mounted it. the child
-      // component also has set the placeholder vnode's elm.
-      // in that case we can just return the element and be done.
+
+      // 调用init钩子后，如果vnode是子组件，则它应该已经创建了一个子实例并将其挂载,且子组件还设置了占位的vnode的elm。
+      // 在这种情况下，我们可以只返回元素并完成操作。
       if (isDef(vnode.componentInstance)) {
         initComponent(vnode, insertedVnodeQueue)
         insert(parentElm, vnode.elm, refElm)
